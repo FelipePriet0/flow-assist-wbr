@@ -158,17 +158,94 @@ All colors MUST be HSL.
   }
   .card-on-fire {
     border-color: hsl(var(--destructive));
+    animation: heat-wobble 2.2s ease-in-out infinite;
   }
+  /* Flame tongues / glow */
   .card-on-fire::before {
     content: "";
     position: absolute;
-    inset: -20%;
+    left: -8%;
+    right: -8%;
+    bottom: -10%;
+    height: 70%;
     border-radius: inherit;
-    background:
-      radial-gradient(120% 120% at 80% 0%, hsl(var(--warning) / 0.18), transparent 60%),
-      radial-gradient(120% 120% at 20% 100%, hsl(var(--destructive) / 0.18), transparent 60%);
-    mix-blend-mode: screen;
     pointer-events: none;
-    animation: fire-glow 1.6s ease-in-out infinite;
+    background:
+      radial-gradient(180px 140px at 30% 100%, hsl(var(--warning) / 0.20), transparent 70%),
+      radial-gradient(220px 180px at 70% 100%, hsl(var(--destructive) / 0.18), transparent 70%),
+      radial-gradient(260px 220px at 50% 100%, hsl(var(--warning) / 0.12), transparent 70%);
+    mix-blend-mode: screen;
+    filter: blur(10px) saturate(1.2);
+    animation: flames 1.2s ease-in-out infinite alternate, fire-glow 1.6s ease-in-out infinite;
+  }
+  /* Embers rising */
+  .card-on-fire::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(2px 2px at 10% 90%, hsl(var(--warning) / 0.45), transparent),
+      radial-gradient(2px 2px at 30% 95%, hsl(var(--destructive) / 0.35), transparent),
+      radial-gradient(2px 2px at 50% 92%, hsl(var(--warning) / 0.4), transparent),
+      radial-gradient(2px 2px at 70% 96%, hsl(var(--destructive) / 0.3), transparent),
+      radial-gradient(2px 2px at 85% 93%, hsl(var(--warning) / 0.35), transparent);
+    background-repeat: no-repeat;
+    animation: embers 2.6s linear infinite;
+    opacity: 0.8;
+  }
+  /* Pause during drag */
+  .dragging.card-on-fire,
+  .dragging.card-on-fire::before,
+  .dragging.card-on-fire::after {
+    animation-play-state: paused !important;
+  }
+
+  @keyframes heat-wobble {
+    0%   { transform: translateY(0) rotate(0deg) }
+    25%  { transform: translateY(-0.5px) rotate(-0.2deg) }
+    50%  { transform: translateY(0.6px) rotate(0.2deg) }
+    75%  { transform: translateY(-0.4px) rotate(-0.15deg) }
+    100% { transform: translateY(0) rotate(0) }
+  }
+
+  @keyframes flames {
+    0% {
+      transform: translateY(6px) scaleY(0.98);
+      filter: blur(10px) saturate(1.15);
+    }
+    100% {
+      transform: translateY(-6px) scaleY(1.02);
+      filter: blur(12px) saturate(1.3);
+    }
+  }
+
+  @keyframes embers {
+    0% {
+      background-position:
+        10% 96%,
+        30% 98%,
+        50% 97%,
+        70% 99%,
+        85% 97%;
+      opacity: 0.9;
+    }
+    100% {
+      background-position:
+        12% -10%,
+        28% -15%,
+        52% -8%,
+        68% -18%,
+        84% -12%;
+      opacity: 0.4;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-on-fire,
+    .card-on-fire::before,
+    .card-on-fire::after {
+      animation: none !important;
+    }
   }
 }
