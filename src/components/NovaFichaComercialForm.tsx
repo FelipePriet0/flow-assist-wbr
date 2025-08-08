@@ -34,7 +34,6 @@ const schema = z.object({
     tipoMoradia: z.enum(["Propria", "Alugada", "Cedida", "Outro"]).optional(),
     tipoMoradiaObs: z.string().optional(),
     doPs: z.string().optional(),
-    nasOutras: z.enum(["Parentes", "Locador(a)", "Só conhecidos", "Não conhece"]).optional(),
   }),
   relacoes: z.object({
     unicaNoLote: z.enum(["Sim", "Não"]).optional(),
@@ -45,6 +44,7 @@ const schema = z.object({
     enviouContrato: z.enum(["Sim", "Não"]).optional(),
     nomeDe: z.string().optional(),
     nomeLocador: z.string().optional(),
+    telefoneLocador: z.string().optional(),
     enviouComprovante: z.enum(["Sim", "Não"]).optional(),
     tipoComprovante: z.enum(["Energia", "Água", "Internet", "Outro"]).optional(),
     nomeComprovante: z.string().optional(),
@@ -107,6 +107,7 @@ const schema = z.object({
     planoEscolhido: z.string().optional(), // aguardando lista final
     diaVencimento: z.enum(["5", "10", "15", "20", "25"]).optional(),
     carneImpresso: z.enum(["Sim", "Não"]).optional(),
+    svaAvulso: z.string().optional(),
     administrativas: z.object({
       quemSolicitou: z.string().optional(),
       meio: z.enum(["Presencial", "Ligação", "WhatsApp"]).optional(),
@@ -190,18 +191,6 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
                 <FormMessage />
               </FormItem>
             )} />
-            <FormField control={form.control} name="cliente.cpf" render={({ field }) => (
-              <FormItem>
-                <FormLabel>CPF</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="cliente.nasc" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nasc</FormLabel>
-                <FormControl><Input type="date" {...field} /></FormControl>
-              </FormItem>
-            )} />
             <FormField control={form.control} name="cliente.tel" render={({ field }) => (
               <FormItem>
                 <FormLabel>Tel</FormLabel>
@@ -215,9 +204,21 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
               </FormItem>
             )} />
             <FormField control={form.control} name="cliente.doPs" render={({ field }) => (
-              <FormItem className="md:col-span-3">
+              <FormItem>
                 <FormLabel>Do PS</FormLabel>
                 <FormControl><Input {...field} /></FormControl>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="cliente.cpf" render={({ field }) => (
+              <FormItem>
+                <FormLabel>CPF</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="cliente.nasc" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nasc</FormLabel>
+                <FormControl><Input type="date" {...field} /></FormControl>
               </FormItem>
             )} />
             <FormField control={form.control} name="cliente.naturalidade" render={({ field }) => (
@@ -246,20 +247,20 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
           <h3 className="text-lg font-semibold mb-3">2. Endereço</h3>
           <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
             <FormField control={form.control} name="endereco.end" render={({ field }) => (
-              <FormItem className="md:col-span-2">
-                <FormLabel>End</FormLabel>
+              <FormItem>
+                <FormLabel>Endereço (logradouro)</FormLabel>
                 <FormControl><Input {...field} /></FormControl>
               </FormItem>
             )} />
             <FormField control={form.control} name="endereco.n" render={({ field }) => (
               <FormItem>
-                <FormLabel>N</FormLabel>
+                <FormLabel>Nº</FormLabel>
                 <FormControl><Input {...field} /></FormControl>
               </FormItem>
             )} />
             <FormField control={form.control} name="endereco.compl" render={({ field }) => (
               <FormItem>
-                <FormLabel>Compl</FormLabel>
+                <FormLabel>Complemento</FormLabel>
                 <FormControl><Input {...field} /></FormControl>
               </FormItem>
             )} />
@@ -307,7 +308,7 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
               </FormItem>
             )} />
             <FormField control={form.control} name="endereco.tipoMoradiaObs" render={({ field }) => (
-              <FormItem className="md:col-span-3">
+              <FormItem className="md:col-span-2">
                 <FormLabel>Observações</FormLabel>
                 <FormControl><Input {...field} /></FormControl>
               </FormItem>
@@ -316,24 +317,6 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
               <FormItem className="md:col-span-3">
                 <FormLabel>Do PS</FormLabel>
                 <FormControl><Input {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="endereco.nasOutras" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nas Outras</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecionar" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Parentes">Parentes</SelectItem>
-                    <SelectItem value="Locador(a)">Locador(a)</SelectItem>
-                    <SelectItem value="Só conhecidos">Só conhecidos</SelectItem>
-                    <SelectItem value="Não conhece">Não conhece</SelectItem>
-                  </SelectContent>
-                </Select>
               </FormItem>
             )} />
           </div>
@@ -364,7 +347,7 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
               </FormItem>
             )} />
             <FormField control={form.control} name="relacoes.comQuemReside" render={({ field }) => (
-              <FormItem className="md:col-span-3">
+              <FormItem className="md:col-span-2">
                 <FormLabel>Com quem reside</FormLabel>
                 <FormControl><Input {...field} /></FormControl>
               </FormItem>
@@ -423,13 +406,6 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="relacoes.nomeLocador" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome do locador(a)</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
               </>
             )}
             <FormField control={form.control} name="relacoes.enviouComprovante" render={({ field }) => (
@@ -468,6 +444,19 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
                 <FormControl><Input {...field} /></FormControl>
               </FormItem>
             )} />
+            <FormField control={form.control} name="relacoes.nomeLocador" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nome do Locador(a)</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="relacoes.telefoneLocador" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Telefone</FormLabel>
+                <FormControl><Input inputMode="tel" {...field} /></FormControl>
+              </FormItem>
+            )} />
             <FormField control={form.control} name="relacoes.temInternetFixa" render={({ field }) => (
               <FormItem>
                 <FormLabel>Tem internet fixa atualmente?</FormLabel>
@@ -503,7 +492,7 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
         {/* 4. Emprego e Renda */}
         <section>
           <h3 className="text-lg font-semibold mb-3">4. Emprego e Renda</h3>
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-4">
             <FormField control={form.control} name="empregoRenda.profissao" render={({ field }) => (
               <FormItem>
                 <FormLabel>Profissão</FormLabel>
@@ -535,9 +524,9 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
               </FormItem>
             )} />
             <FormField control={form.control} name="empregoRenda.vinculoObs" render={({ field }) => (
-              <FormItem className="md:col-span-3">
-                <FormLabel>Observações</FormLabel>
-                <FormControl><Textarea rows={3} {...field} /></FormControl>
+              <FormItem>
+                <FormLabel>Obs</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
               </FormItem>
             )} />
             <FormField control={form.control} name="empregoRenda.doPs" render={({ field }) => (
@@ -568,12 +557,6 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
                     <SelectItem value="Viúvo(a)">Viúvo(a)</SelectItem>
                   </SelectContent>
                 </Select>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="conjuge.obs" render={({ field }) => (
-              <FormItem className="md:col-span-2">
-                <FormLabel>Observações</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
               </FormItem>
             )} />
             <FormField control={form.control} name="conjuge.nome" render={({ field }) => (
@@ -610,18 +593,6 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
               <FormItem>
                 <FormLabel>UF</FormLabel>
                 <FormControl><Input maxLength={2} {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="conjuge.obs2" render={({ field }) => (
-              <FormItem className="md:col-span-3">
-                <FormLabel>Observações</FormLabel>
-                <FormControl><Textarea rows={3} {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="conjuge.doPs" render={({ field }) => (
-              <FormItem className="md:col-span-3">
-                <FormLabel>Do PS</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
               </FormItem>
             )} />
           </div>
@@ -750,13 +721,20 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
         {/* 10. Outras informações */}
         <section>
           <h3 className="text-lg font-semibold mb-3">10. Outras informações</h3>
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
             <FormField control={form.control} name="outras.planoEscolhido" render={({ field }) => (
               <FormItem>
                 <FormLabel>Plano escolhido</FormLabel>
-                <FormControl>
-                  <Input placeholder="Aguardando lista final" {...field} />
-                </FormControl>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecionar" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="A definir">A definir</SelectItem>
+                  </SelectContent>
+                </Select>
               </FormItem>
             )} />
             <FormField control={form.control} name="outras.diaVencimento" render={({ field }) => (
@@ -772,6 +750,21 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
                     <SelectItem value="15">15</SelectItem>
                     <SelectItem value="20">20</SelectItem>
                     <SelectItem value="25">25</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="outras.svaAvulso" render={({ field }) => (
+              <FormItem>
+                <FormLabel>SVA Avulso</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecionar" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="A definir">A definir</SelectItem>
                   </SelectContent>
                 </Select>
               </FormItem>
@@ -792,149 +785,12 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
             )} />
           </div>
 
-          {/* Administrativas dentro da seção */}
-          <div className="mt-4 grid gap-3 grid-cols-1 md:grid-cols-3">
-            <FormField control={form.control} name="outras.administrativas.quemSolicitou" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Quem solicitou a ficha</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="outras.administrativas.meio" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Meio</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Presencial">Presencial</SelectItem>
-                    <SelectItem value="Ligação">Ligação</SelectItem>
-                    <SelectItem value="WhatsApp">WhatsApp</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="outras.administrativas.fone" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Fone</FormLabel>
-                <FormControl><Input inputMode="tel" {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="outras.administrativas.via" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Via</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Rádio">Rádio</SelectItem>
-                    <SelectItem value="Outdoor">Outdoor</SelectItem>
-                    <SelectItem value="Instagram">Instagram</SelectItem>
-                    <SelectItem value="Facebook">Facebook</SelectItem>
-                    <SelectItem value="Site">Site</SelectItem>
-                    <SelectItem value="Indicação">Indicação</SelectItem>
-                    <SelectItem value="Já foi cliente">Já foi cliente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="outras.administrativas.data" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Data</FormLabel>
-                <FormControl><Input type="date" {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="outras.administrativas.protocoloMk" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Protocolo (MK)</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="outras.administrativas.representanteWbr" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Representante WBR</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-              </FormItem>
-            )} />
-          </div>
         </section>
 
-        {/* 11. Informações Administrativas (secção dedicada) */}
-        <section>
-          <h3 className="text-lg font-semibold mb-3">11. Informações Administrativas</h3>
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
-            <FormField control={form.control} name="administrativas.quemSolicitou" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Quem solicitou a ficha</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="administrativas.meio" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Meio</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Presencial">Presencial</SelectItem>
-                    <SelectItem value="Ligação">Ligação</SelectItem>
-                    <SelectItem value="WhatsApp">WhatsApp</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="administrativas.fone" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Fone</FormLabel>
-                <FormControl><Input inputMode="tel" {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="administrativas.via" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Via</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Rádio">Rádio</SelectItem>
-                    <SelectItem value="Outdoor">Outdoor</SelectItem>
-                    <SelectItem value="Instagram">Instagram</SelectItem>
-                    <SelectItem value="Facebook">Facebook</SelectItem>
-                    <SelectItem value="Site">Site</SelectItem>
-                    <SelectItem value="Indicação">Indicação</SelectItem>
-                    <SelectItem value="Já foi cliente">Já foi cliente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="administrativas.data" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Data</FormLabel>
-                <FormControl><Input type="date" {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="administrativas.protocoloMk" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Protocolo (MK)</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="administrativas.representanteWbr" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Representante WBR</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-              </FormItem>
-            )} />
-          </div>
-        </section>
 
         {/* 12. Informações relevantes */}
         <section>
-          <h3 className="text-lg font-semibold mb-3">12. Informações relevantes</h3>
+          <h3 className="text-lg font-semibold mb-3">11. Informações relevantes</h3>
           <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
             <FormField control={form.control} name="infoRelevantes.info" render={({ field }) => (
               <FormItem>
