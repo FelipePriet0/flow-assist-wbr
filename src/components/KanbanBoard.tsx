@@ -26,6 +26,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -151,6 +161,7 @@ export default function KanbanBoard() {
   const [prazoFiltro, setPrazoFiltro] = useState<PrazoFiltro>("todos");
   const [openNew, setOpenNew] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [editing, setEditing] = useState<{
     id: string;
     nome: string;
@@ -565,10 +576,6 @@ export default function KanbanBoard() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="col-span-1 md:col-span-2 space-y-2">
-                <Label>Parecer do analista (obrigatório)</Label>
-                <Input value={editing.parecer} onChange={(e) => setEditing((s) => s ? { ...s, parecer: e.target.value } : s)} placeholder="Descreva o parecer" />
               </div>
             </div>
           )}

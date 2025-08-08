@@ -1,55 +1,106 @@
 import React, { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ModalEditarFichaProps {
   card: any;
+  responsaveis?: string[];
   onClose: () => void;
   onSave: (updatedCard: any) => void;
 }
 
-export default function ModalEditarFicha({ card, onClose, onSave }: ModalEditarFichaProps) {
-  const [form, setForm] = useState({ ...card });
+export default function ModalEditarFicha({ card, onClose, onSave, responsaveis = [] }: ModalEditarFichaProps) {
+  const [form, setForm] = useState({
+    nome: card?.nome ?? "",
+    telefone: card?.telefone ?? "",
+    responsavel: card?.responsavel ?? "",
+    agendamento: card?.deadline ? new Date(card.deadline).toISOString().slice(0, 10) : "",
+    recebido_em: card?.receivedAt ? new Date(card.receivedAt).toISOString().slice(0, 10) : "",
+  });
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    if (!form.parecer) {
-      alert("O campo 'Parecer' é obrigatório.");
-      return;
-    }
+  const handleSave = () => setConfirmOpen(true);
+
+  const confirmSave = () => {
     onSave(form);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow w-full max-w-md">
-        <h2 className="text-xl mb-4">Editar Ficha</h2>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-background text-foreground p-6 rounded-md shadow-xl w-full max-w-md">
+        <h2 className="text-xl mb-4 font-semibold">Editar Ficha</h2>
 
-        <label className="block mb-2">Nome do Cliente</label>
-        <input className="input" name="nome" value={form.nome} onChange={handleChange} />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Nome do Cliente</Label>
+            <Input name="nome" value={form.nome} onChange={handleChange} />
+          </div>
 
-        <label className="block mt-4 mb-2">Telefone</label>
-        <input className="input" name="telefone" value={form.telefone} onChange={handleChange} />
+          <div className="space-y-2">
+            <Label>Telefone</Label>
+            <Input name="telefone" inputMode="tel" type="tel" value={form.telefone} onChange={handleChange} />
+          </div>
 
-        <label className="block mt-4 mb-2">Prazo de Agendamento</label>
-        <input className="input" name="agendamento" type="date" value={form.agendamento} onChange={handleChange} />
+          <div className="space-y-2">
+            <Label>Prazo de Agendamento</Label>
+            <Input name="agendamento" type="date" value={form.agendamento} onChange={handleChange} />
+          </div>
 
-        <label className="block mt-4 mb-2">Responsável</label>
-        <input className="input" name="responsavel" value={form.responsavel} onChange={handleChange} />
+          <div className="space-y-2">
+            <Label>Responsável</Label>
+            <Select value={form.responsavel} onValueChange={(v) => setForm((s) => ({ ...s, responsavel: v }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Atribuir" />
+              </SelectTrigger>
+              <SelectContent className="z-50">
+                {responsaveis.map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <label className="block mt-4 mb-2">Recebido em</label>
-        <input className="input" name="recebido_em" type="date" value={form.recebido_em} onChange={handleChange} />
-
-        <label className="block mt-4 mb-2">Parecer do Analista *</label>
-        <textarea className="input" name="parecer" value={form.parecer} onChange={handleChange} />
+          <div className="space-y-2">
+            <Label>Recebido em</Label>
+            <Input name="recebido_em" type="date" value={form.recebido_em} onChange={handleChange} />
+          </div>
+        </div>
 
         <div className="flex justify-between mt-6">
-          <button onClick={handleSave} className="btn bg-blue-600 text-white px-4 py-2 rounded">Salvar</button>
-          <button onClick={onClose} className="btn bg-gray-300 px-4 py-2 rounded">Fechar</button>
+          <Button variant="secondary" onClick={onClose}>Sair</Button>
+          <Button onClick={handleSave}>Salvar Alterações</Button>
         </div>
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar alterações?</AlertDialogTitle>
+            <AlertDialogDescription>As alterações serão aplicadas à ficha.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSave}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
