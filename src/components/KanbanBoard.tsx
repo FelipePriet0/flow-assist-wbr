@@ -47,6 +47,7 @@ export interface CardItem {
   receivedAt: string; // ISO
   deadline: string; // ISO
   responsavel?: string;
+  telefone?: string;
   score?: number;
   checks: {
     moradia: boolean;
@@ -208,6 +209,7 @@ export default function KanbanBoard() {
 
   // New card form state
   const [novoNome, setNovoNome] = useState("");
+  const [novoTelefone, setNovoTelefone] = useState("");
   const [novoScore, setNovoScore] = useState<number | undefined>(undefined);
   const [novoResp, setNovoResp] = useState<string | undefined>(undefined);
   const [novoParecer, setNovoParecer] = useState("");
@@ -233,6 +235,7 @@ export default function KanbanBoard() {
       receivedAt: novoRecebido.toISOString(),
       deadline: novoPrazo.toISOString(),
       responsavel: novoResp || undefined,
+      telefone: novoTelefone || undefined,
       score: novoScore,
       checks: { ...novoChecks },
       parecer: novoParecer.trim(),
@@ -247,6 +250,7 @@ export default function KanbanBoard() {
     setOpenNew(false);
     // reset
     setNovoNome("");
+    setNovoTelefone("");
     setNovoScore(undefined);
     setNovoResp(undefined);
     setNovoParecer("");
@@ -365,12 +369,13 @@ export default function KanbanBoard() {
                     <Input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Score SPC/Serasa</Label>
+                    <Label>Telefone</Label>
                     <Input
-                      type="number"
-                      inputMode="numeric"
-                      value={novoScore ?? ''}
-                      onChange={(e) => setNovoScore(e.target.value ? Number(e.target.value) : undefined)}
+                      type="tel"
+                      inputMode="tel"
+                      value={novoTelefone}
+                      onChange={(e) => setNovoTelefone(e.target.value)}
+                      placeholder="(00) 00000-0000"
                     />
                   </div>
                   <div className="space-y-2">
@@ -427,11 +432,6 @@ export default function KanbanBoard() {
                         />
                       </PopoverContent>
                     </Popover>
-                  </div>
-                  <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-2"><Checkbox checked={novoChecks.moradia} onCheckedChange={(v) => setNovoChecks((s) => ({...s, moradia: Boolean(v)}))} /> <Label>Estabilidade de moradia</Label></div>
-                    <div className="flex items-center gap-2"><Checkbox checked={novoChecks.emprego} onCheckedChange={(v) => setNovoChecks((s) => ({...s, emprego: Boolean(v)}))} /> <Label>Estabilidade de emprego</Label></div>
-                    <div className="flex items-center gap-2"><Checkbox checked={novoChecks.vinculos} onCheckedChange={(v) => setNovoChecks((s) => ({...s, vinculos: Boolean(v)}))} /> <Label>Vínculos familiares</Label></div>
                   </div>
                   <div className="col-span-1 md:col-span-2 space-y-2">
                     <Label>Parecer do analista (obrigatório)</Label>
