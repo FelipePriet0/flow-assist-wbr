@@ -605,7 +605,7 @@ function KanbanCard({
   function handleCardClick(e: React.MouseEvent) {
     if (isDragging) return;
     const target = e.target as HTMLElement;
-    if (target.closest('[data-ignore-card-click],button,select,input,textarea,[role="button"],[role="menuitem"]')) return;
+    if (target.closest('[data-ignore-card-click],button,select,input,textarea,[role="menuitem"]')) return;
     onOpen(card);
   }
 
