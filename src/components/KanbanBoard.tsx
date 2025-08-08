@@ -41,6 +41,7 @@ import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon, UserPlus, Search } from "lucide-react";
+import ModalEditarFicha from "@/components/ui/ModalEditarFicha";
 
 // Types
 export type ColumnId =
@@ -171,6 +172,7 @@ export default function KanbanBoard() {
     recebido?: Date;
     prazo?: Date;
   } | null>(null);
+  const [mockCard, setMockCard] = useState<CardItem | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -321,16 +323,7 @@ export default function KanbanBoard() {
   }
 
   function openEdit(card: CardItem) {
-    setEditing({
-      id: card.id,
-      nome: card.nome,
-      telefone: card.telefone ?? "",
-      responsavel: card.responsavel,
-      parecer: card.parecer,
-      recebido: new Date(card.receivedAt),
-      prazo: new Date(card.deadline),
-    });
-    setEditOpen(true);
+    setMockCard(card);
   }
 
   function saveEdits() {
@@ -507,84 +500,31 @@ export default function KanbanBoard() {
         </CardContent>
       </Card>
 
-      <Dialog open={editOpen} onOpenChange={(o) => { if (!o) { setEditOpen(false); setEditing(null); } }}>
-        <DialogContent className="sm:max-w-[640px]">
-          <DialogHeader>
-            <DialogTitle>Editar ficha</DialogTitle>
-          </DialogHeader>
-          {editing && (
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Nome do cliente</Label>
-                <Input value={editing.nome} onChange={(e) => setEditing((s) => s ? { ...s, nome: e.target.value } : s)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Telefone</Label>
-                <Input type="tel" inputMode="tel" value={editing.telefone} onChange={(e) => setEditing((s) => s ? { ...s, telefone: e.target.value } : s)} placeholder="(00) 00000-0000" />
-              </div>
-              <div className="space-y-2">
-                <Label>Recebido em</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="justify-start font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {editing.recebido ? format(editing.recebido, "dd/MM/yyyy") : "Selecionar"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={editing.recebido}
-                      onSelect={(d) => setEditing((s) => s ? { ...s, recebido: d ?? undefined } : s)}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-2">
-                <Label>Prazo de agendamento</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="justify-start font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {editing.prazo ? format(editing.prazo, "dd/MM/yyyy") : "Selecionar"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={editing.prazo}
-                      onSelect={(d) => setEditing((s) => s ? { ...s, prazo: d ?? undefined } : s)}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-2">
-                <Label>Responsável</Label>
-                <Select value={editing.responsavel} onValueChange={(v) => setEditing((s) => s ? { ...s, responsavel: v } : s)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Atribuir" />
-                  </SelectTrigger>
-                  <SelectContent className="z-50">
-                    {RESPONSAVEIS.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => { setEditOpen(false); setEditing(null); }}>Fechar</Button>
-            <Button onClick={saveEdits}>Salvar Alterações</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {mockCard && (
+        <ModalEditarFicha
+          card={mockCard}
+          responsaveis={responsaveisOptions}
+          onClose={() => setMockCard(null)}
+          onSave={(form: any) => {
+            setCards((prev) =>
+              prev.map((c) =>
+                c.id === (mockCard as CardItem).id
+                  ? {
+                      ...c,
+                      nome: form.nome ?? c.nome,
+                      telefone: form.telefone || undefined,
+                      responsavel: form.responsavel || undefined,
+                      deadline: form.agendamento ? new Date(form.agendamento).toISOString() : c.deadline,
+                      receivedAt: form.recebido_em ? new Date(form.recebido_em).toISOString() : c.receivedAt,
+                      updatedAt: new Date().toISOString(),
+                    }
+                  : c
+              )
+            );
+            setMockCard(null);
+          }}
+        />
+      )}
 
       <DndContext collisionDetection={closestCenter} sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
