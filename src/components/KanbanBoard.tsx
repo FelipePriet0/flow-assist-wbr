@@ -357,7 +357,7 @@ export default function KanbanBoard() {
             </div>
             <Dialog open={openNew} onOpenChange={setOpenNew}>
               <DialogTrigger asChild>
-                <Button className="hover-scale" style={{ backgroundImage: "var(--gradient-primary)" }}>
+                <Button variant="pill" size="xl" className="hover-scale" style={{ backgroundImage: "var(--gradient-primary)" }}>
                   <UserPlus className="mr-2 h-4 w-4" />
                   Nova ficha
                 </Button>
@@ -428,7 +428,7 @@ export default function KanbanBoard() {
       <DndContext collisionDetection={closestCenter} sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {COLUMNS.map((col) => (
-            <div key={col.id} className="rounded-lg border bg-card" id={col.id}>
+            <div key={col.id} className="rounded-xl border bg-card" id={col.id}>
               <div
                 className="px-4 py-3 border-b flex items-center justify-between"
                 style={{ backgroundImage: "var(--gradient-primary)", color: "hsl(var(--primary-foreground))" }}
@@ -516,7 +516,7 @@ function KanbanCard({
       {...attributes}
       onClick={handleCardClick}
       className={cn(
-        "rounded-lg border bg-card shadow-sm hover-scale cursor-grab active:cursor-grabbing",
+        "rounded-xl border bg-card shadow-sm hover-scale cursor-grab active:cursor-grabbing",
         overDue ? "ring-2 ring-[hsl(var(--destructive))]" : "",
         isDragging ? "opacity-80" : ""
       )}
