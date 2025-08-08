@@ -526,7 +526,12 @@ function KanbanCard({
       )}
       style={{ transition: "var(--transition-smooth)", ...dragStyle }}
     >
-      {onFire && <div className="fire-overlay" aria-hidden />}
+      {onFire && (
+        <>
+          <div className="fire-overlay" aria-hidden />
+          <div className="corner-flame" aria-hidden />
+        </>
+      )}
 
       <div className="p-3 border-b flex items-center justify-between">
         <div className="font-medium">{card.nome}</div>
