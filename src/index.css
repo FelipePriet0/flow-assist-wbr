@@ -145,4 +145,30 @@ All colors MUST be HSL.
     transform: scaleX(1);
     transform-origin: bottom left;
   }
+
+  /* Kanban card polish */
+  .kanban-card {
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition-smooth);
+    box-shadow: var(--shadow-elegant);
+  }
+  .kanban-card:hover {
+    box-shadow: var(--shadow-glow);
+  }
+  .card-on-fire {
+    border-color: hsl(var(--destructive));
+  }
+  .card-on-fire::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    border-radius: inherit;
+    background:
+      radial-gradient(120% 120% at 80% 0%, hsl(var(--warning) / 0.18), transparent 60%),
+      radial-gradient(120% 120% at 20% 100%, hsl(var(--destructive) / 0.18), transparent 60%);
+    mix-blend-mode: screen;
+    pointer-events: none;
+    animation: fire-glow 1.6s ease-in-out infinite;
+  }
 }

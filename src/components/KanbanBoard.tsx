@@ -483,6 +483,8 @@ function KanbanCard({
   onOpen: (card: CardItem) => void;
 }) {
   const overDue = isOverdue(card);
+  const hoursUntil = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / 36e5);
+  const onFire = card.columnId === "aprovado" && hoursUntil(card.deadline) <= 24;
   const headerBadges = (
     <div className="flex gap-2 flex-wrap">
       {card.labels.map((l) => (
@@ -516,8 +518,9 @@ function KanbanCard({
       {...attributes}
       onClick={handleCardClick}
       className={cn(
-        "rounded-xl border bg-card shadow-sm hover-scale cursor-grab active:cursor-grabbing",
+        "kanban-card rounded-xl border bg-card shadow-sm hover-scale cursor-grab active:cursor-grabbing",
         overDue ? "ring-2 ring-[hsl(var(--destructive))]" : "",
+        onFire ? "card-on-fire animate-fire-flicker" : "",
         isDragging ? "opacity-80" : ""
       )}
       style={{ transition: "var(--transition-smooth)", ...dragStyle }}

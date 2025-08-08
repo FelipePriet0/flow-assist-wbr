@@ -100,6 +100,16 @@ export default {
 				'alert-pulse': {
 					'0%, 100%': { boxShadow: '0 0 0 0 hsl(var(--destructive) / 0.5)' },
 					'50%': { boxShadow: '0 0 0 8px hsl(var(--destructive) / 0.0)' }
+				},
+				// Fire animations for "Pegando Fogo"
+				'fire-flicker': {
+					'0%': { boxShadow: '0 0 0 0 hsl(var(--destructive) / 0.25), 0 0 0 0 hsl(var(--warning) / 0.15)' },
+					'50%': { boxShadow: '0 0 0 6px hsl(var(--destructive) / 0.12), 0 0 0 12px hsl(var(--warning) / 0.06)' },
+					'100%': { boxShadow: '0 0 0 0 hsl(var(--destructive) / 0.25), 0 0 0 0 hsl(var(--warning) / 0.15)' }
+				},
+				'fire-glow': {
+					'0%, 100%': { opacity: '0.25', filter: 'blur(14px)' },
+					'50%': { opacity: '0.6', filter: 'blur(18px)' }
 				}
 			},
 			animation: {
@@ -109,7 +119,9 @@ export default {
 				'fade-out': 'fade-out 0.3s ease-out',
 				'scale-in': 'scale-in 0.2s ease-out',
 				'scale-out': 'scale-out 0.2s ease-out',
-				'alert-pulse': 'alert-pulse 1.4s ease-out infinite'
+				'alert-pulse': 'alert-pulse 1.4s ease-out infinite',
+				'fire-flicker': 'fire-flicker 1.4s ease-in-out infinite',
+				'fire-glow': 'fire-glow 1.6s ease-in-out infinite'
 			}
 		}
 	},
