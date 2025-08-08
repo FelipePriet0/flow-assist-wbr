@@ -150,6 +150,16 @@ export default function KanbanBoard() {
   const [responsavelFiltro, setResponsavelFiltro] = useState<string>("todos");
   const [prazoFiltro, setPrazoFiltro] = useState<PrazoFiltro>("todos");
   const [openNew, setOpenNew] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState<{
+    id: string;
+    nome: string;
+    telefone: string;
+    responsavel?: string;
+    parecer: string;
+    recebido?: Date;
+    prazo?: Date;
+  } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -297,6 +307,45 @@ export default function KanbanBoard() {
         };
       })
     );
+  }
+
+  function openEdit(card: CardItem) {
+    setEditing({
+      id: card.id,
+      nome: card.nome,
+      telefone: card.telefone ?? "",
+      responsavel: card.responsavel,
+      parecer: card.parecer,
+      recebido: new Date(card.receivedAt),
+      prazo: new Date(card.deadline),
+    });
+    setEditOpen(true);
+  }
+
+  function saveEdits() {
+    if (!editing || !editing.parecer.trim()) {
+      toast({ title: "Parecer do analista é obrigatório." });
+      return;
+    }
+    setCards((prev) =>
+      prev.map((c) =>
+        c.id === editing.id
+          ? {
+              ...c,
+              nome: editing.nome.trim(),
+              telefone: editing.telefone || undefined,
+              responsavel: editing.responsavel || undefined,
+              parecer: editing.parecer.trim(),
+              receivedAt: editing.recebido ? editing.recebido.toISOString() : c.receivedAt,
+              deadline: editing.prazo ? editing.prazo.toISOString() : c.deadline,
+              updatedAt: new Date().toISOString(),
+            }
+          : c
+      )
+    );
+    setEditOpen(false);
+    setEditing(null);
+    toast({ title: "Alterações salvas" });
   }
 
   return (
@@ -447,6 +496,89 @@ export default function KanbanBoard() {
         </CardContent>
       </Card>
 
+      <Dialog open={editOpen} onOpenChange={(o) => { if (!o) { setEditOpen(false); setEditing(null); } }}>
+        <DialogContent className="sm:max-w-[640px]">
+          <DialogHeader>
+            <DialogTitle>Editar ficha</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Nome do cliente</Label>
+                <Input value={editing.nome} onChange={(e) => setEditing((s) => s ? { ...s, nome: e.target.value } : s)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Telefone</Label>
+                <Input type="tel" inputMode="tel" value={editing.telefone} onChange={(e) => setEditing((s) => s ? { ...s, telefone: e.target.value } : s)} placeholder="(00) 00000-0000" />
+              </div>
+              <div className="space-y-2">
+                <Label>Recebido em</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {editing.recebido ? format(editing.recebido, "dd/MM/yyyy") : "Selecionar"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={editing.recebido}
+                      onSelect={(d) => setEditing((s) => s ? { ...s, recebido: d ?? undefined } : s)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Prazo de agendamento</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {editing.prazo ? format(editing.prazo, "dd/MM/yyyy") : "Selecionar"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={editing.prazo}
+                      onSelect={(d) => setEditing((s) => s ? { ...s, prazo: d ?? undefined } : s)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Responsável</Label>
+                <Select value={editing.responsavel} onValueChange={(v) => setEditing((s) => s ? { ...s, responsavel: v } : s)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Atribuir" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50">
+                    {RESPONSAVEIS.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-1 md:col-span-2 space-y-2">
+                <Label>Parecer do analista (obrigatório)</Label>
+                <Input value={editing.parecer} onChange={(e) => setEditing((s) => s ? { ...s, parecer: e.target.value } : s)} placeholder="Descreva o parecer" />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => { setEditOpen(false); setEditing(null); }}>Fechar</Button>
+            <Button onClick={saveEdits}>Salvar Alterações</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <DndContext collisionDetection={closestCenter} sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {COLUMNS.map((col) => (
@@ -469,7 +601,7 @@ export default function KanbanBoard() {
                     {filteredCards
                       .filter((c) => c.columnId === col.id)
                       .map((card) => (
-                        <KanbanCard key={card.id} card={card} onSetResponsavel={setResponsavel} onMove={moveTo} />
+                        <KanbanCard key={card.id} card={card} onSetResponsavel={setResponsavel} onMove={moveTo} onOpen={openEdit} />
                       ))}
                   </ColumnDropArea>
                 </SortableContext>
@@ -497,10 +629,12 @@ function KanbanCard({
   card,
   onSetResponsavel,
   onMove,
+  onOpen,
 }: {
   card: CardItem;
   onSetResponsavel: (id: string, resp: string) => void;
   onMove: (id: string, col: ColumnId) => void;
+  onOpen: (card: CardItem) => void;
 }) {
   const overDue = isOverdue(card);
   const headerBadges = (
@@ -521,12 +655,20 @@ function KanbanCard({
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id });
   const dragStyle = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
 
+  function handleCardClick(e: React.MouseEvent) {
+    if (isDragging) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-ignore-card-click],button,select,input,textarea,[role="button"],[role="menuitem"]')) return;
+    onOpen(card);
+  }
+
   return (
     <div
       ref={setNodeRef}
       id={card.id}
       {...listeners}
       {...attributes}
+      onClick={handleCardClick}
       className={cn(
         "rounded-lg border bg-card shadow-sm hover-scale cursor-grab active:cursor-grabbing",
         overDue ? "ring-2 ring-[hsl(var(--destructive))]" : "",
@@ -567,9 +709,9 @@ function KanbanCard({
           <span className="text-muted-foreground">{card.parecer || "—"}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Label className="text-sm">Responsável</Label>
+          <Label className="text-sm" data-ignore-card-click>Responsável</Label>
           <Select value={card.responsavel} onValueChange={(v) => onSetResponsavel(card.id, v)}>
-            <SelectTrigger className="h-8">
+            <SelectTrigger className="h-8" data-ignore-card-click>
               <SelectValue placeholder="Atribuir" />
             </SelectTrigger>
             <SelectContent className="z-50">
@@ -584,11 +726,11 @@ function KanbanCard({
 
         {card.columnId === "em_analise" && (
           <div className="pt-2 flex gap-2">
-            <Button size="sm" onClick={() => onMove(card.id, "aprovado")}>
+            <Button size="sm" onClick={() => onMove(card.id, "aprovado")} data-ignore-card-click>
               Aprovar
             </Button>
-            <Button size="sm" variant="destructive" onClick={() => onMove(card.id, "negado_taxa")}>Negar</Button>
-            <Button size="sm" variant="secondary" onClick={() => onMove(card.id, "reanalise")}>
+            <Button size="sm" variant="destructive" onClick={() => onMove(card.id, "negado_taxa")} data-ignore-card-click>Negar</Button>
+            <Button size="sm" variant="secondary" onClick={() => onMove(card.id, "reanalise")} data-ignore-card-click>
               Reanalisar
             </Button>
           </div>
