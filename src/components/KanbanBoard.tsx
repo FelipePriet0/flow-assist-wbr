@@ -42,6 +42,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon, UserPlus, Search } from "lucide-react";
 import ModalEditarFicha from "@/components/ui/ModalEditarFicha";
+import NovaFichaComercialForm, { ComercialFormValues } from "@/components/NovaFichaComercialForm";
 
 // Types
 export type ColumnId =
@@ -230,59 +231,8 @@ export default function KanbanBoard() {
     });
   }, [cards, query, responsavelFiltro, prazoFiltro]);
 
-  // New card form state
-  const [novoNome, setNovoNome] = useState("");
-  const [novoTelefone, setNovoTelefone] = useState("");
-  const [novoScore, setNovoScore] = useState<number | undefined>(undefined);
-  const [novoResp, setNovoResp] = useState<string | undefined>(undefined);
-  const [novoParecer, setNovoParecer] = useState("");
-  const [novoRecebido, setNovoRecebido] = useState<Date | undefined>(new Date());
-  const [novoPrazo, setNovoPrazo] = useState<Date | undefined>(
-    new Date(Date.now() + 1000 * 60 * 60 * 24)
-  );
-  const [novoChecks, setNovoChecks] = useState({ moradia: false, emprego: false, vinculos: false });
+  // New card creation handled by NovaFichaComercialForm component
 
-  function addCard() {
-    if (!novoNome.trim() || !novoParecer.trim() || !novoRecebido || !novoPrazo) {
-      toast({ title: "Preencha todos os campos obrigatórios." });
-      return;
-    }
-
-    const id = Math.random().toString(36).slice(2);
-    const hasResp = Boolean(novoResp);
-    const columnId: ColumnId = hasResp ? "em_analise" : "recebido";
-
-    const newCard: CardItem = {
-      id,
-      nome: novoNome.trim(),
-      receivedAt: novoRecebido.toISOString(),
-      deadline: novoPrazo.toISOString(),
-      responsavel: novoResp || undefined,
-      telefone: novoTelefone || undefined,
-      score: novoScore,
-      checks: { ...novoChecks },
-      parecer: novoParecer.trim(),
-      columnId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastMovedAt: new Date().toISOString(),
-      labels: hasResp ? ["Em Análise"] : [],
-    };
-
-    setCards((prev) => [newCard, ...prev]);
-    setOpenNew(false);
-    // reset
-    setNovoNome("");
-    setNovoTelefone("");
-    setNovoScore(undefined);
-    setNovoResp(undefined);
-    setNovoParecer("");
-    setNovoRecebido(new Date());
-    setNovoPrazo(new Date(Date.now() + 1000 * 60 * 60 * 24));
-    setNovoChecks({ moradia: false, emprego: false, vinculos: false });
-
-    toast({ title: "Nova ficha criada" });
-  }
 
   // Auto-alert re-render timer
   useEffect(() => {
@@ -412,88 +362,37 @@ export default function KanbanBoard() {
                   Nova ficha
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[640px]">
+              <DialogContent className="sm:max-w-[800px]">
                 <DialogHeader>
                   <DialogTitle>Nova ficha</DialogTitle>
                 </DialogHeader>
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Nome do cliente</Label>
-                    <Input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Telefone</Label>
-                    <Input
-                      type="tel"
-                      inputMode="tel"
-                      value={novoTelefone}
-                      onChange={(e) => setNovoTelefone(e.target.value)}
-                      placeholder="(00) 00000-0000"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Responsável</Label>
-                    <Select value={novoResp} onValueChange={setNovoResp}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Atribuir" />
-                      </SelectTrigger>
-                      <SelectContent className="z-50">
-                        {RESPONSAVEIS.map((r) => (
-                          <SelectItem key={r} value={r}>
-                            {r}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Recebido em</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="justify-start font-normal">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {novoRecebido ? format(novoRecebido, "dd/MM/yyyy") : "Selecionar"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={novoRecebido}
-                          onSelect={setNovoRecebido}
-                          initialFocus
-                          className={cn("p-3 pointer-events-auto")}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Prazo de agendamento</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="justify-start font-normal">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {novoPrazo ? format(novoPrazo, "dd/MM/yyyy") : "Selecionar"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={novoPrazo}
-                          onSelect={setNovoPrazo}
-                          initialFocus
-                          className={cn("p-3 pointer-events-auto")}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="col-span-1 md:col-span-2 space-y-2">
-                    <Label>Parecer do analista (obrigatório)</Label>
-                    <Input value={novoParecer} onChange={(e) => setNovoParecer(e.target.value)} placeholder="Descreva o parecer" />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={addCard}>Criar ficha</Button>
-                </DialogFooter>
+                <NovaFichaComercialForm
+                  onCancel={() => setOpenNew(false)}
+                  onSubmit={(values: ComercialFormValues) => {
+                    const id = Math.random().toString(36).slice(2)
+                    const now = new Date()
+                    const deadline = new Date(Date.now() + 1000 * 60 * 60 * 24)
+                    const newCard: CardItem = {
+                      id,
+                      nome: values.cliente?.nome?.trim() || "Sem nome",
+                      receivedAt: now.toISOString(),
+                      deadline: deadline.toISOString(),
+                      responsavel: undefined,
+                      telefone: values.cliente?.tel || undefined,
+                      score: undefined,
+                      checks: { moradia: false, emprego: false, vinculos: false },
+                      parecer: "",
+                      columnId: "recebido",
+                      createdAt: now.toISOString(),
+                      updatedAt: now.toISOString(),
+                      lastMovedAt: now.toISOString(),
+                      labels: [],
+                    }
+                    setCards((prev) => [newCard, ...prev])
+                    setOpenNew(false)
+                    toast({ title: "Nova ficha criada" })
+                  }}
+                />
               </DialogContent>
             </Dialog>
           </div>
