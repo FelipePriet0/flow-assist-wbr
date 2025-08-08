@@ -241,10 +241,70 @@ All colors MUST be HSL.
     }
   }
 
+  .fire-overlay {
+    position: absolute;
+    inset: -6px;
+    border-radius: inherit;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    background:
+      conic-gradient(from 210deg at 50% 100%, hsl(var(--warning) / 0.22), transparent 40%),
+      conic-gradient(from 220deg at 35% 100%, hsl(var(--destructive) / 0.18), transparent 42%),
+      conic-gradient(from 200deg at 65% 100%, hsl(var(--warning) / 0.18), transparent 44%);
+    filter: blur(12px) saturate(1.4) hue-rotate(-4deg);
+    animation: lick 1s ease-in-out infinite alternate, fire-glow 1.4s ease-in-out infinite;
+  }
+  .fire-overlay::before {
+    content: "";
+    position: absolute;
+    left: -10%; right: -10%; top: -30%;
+    height: 40%;
+    background: radial-gradient(60% 80% at 50% 0%, hsl(var(--destructive) / 0.12), transparent 70%);
+    filter: blur(14px) saturate(1.1);
+    opacity: 0.5;
+    animation: smoke 2.4s ease-in-out infinite;
+  }
+  .fire-overlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-repeat: no-repeat;
+    background-image:
+      radial-gradient(2px 2px at 20% 95%, hsl(var(--warning) / 0.6), transparent),
+      radial-gradient(2px 2px at 40% 97%, hsl(var(--destructive) / 0.5), transparent),
+      radial-gradient(2px 2px at 60% 96%, hsl(var(--warning) / 0.55), transparent),
+      radial-gradient(2px 2px at 80% 98%, hsl(var(--destructive) / 0.45), transparent);
+    animation: sparks 1.9s linear infinite;
+    opacity: 0.85;
+  }
+
+  .dragging .fire-overlay,
+  .dragging .fire-overlay::before,
+  .dragging .fire-overlay::after {
+    animation-play-state: paused !important;
+  }
+
+  @keyframes lick {
+    0%   { transform: translateY(8px) scaleY(0.95); }
+    100% { transform: translateY(-6px) scaleY(1.05); }
+  }
+  @keyframes smoke {
+    0%   { transform: translateY(0) scale(1); opacity: 0.45; }
+    100% { transform: translateY(-18%) scale(1.05); opacity: 0; }
+  }
+  @keyframes sparks {
+    from { background-position: 20% 100%, 40% 100%, 60% 100%, 80% 100%; }
+    to   { background-position: 25% -10%, 38% -12%, 62% -8%, 78% -14%; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .card-on-fire,
     .card-on-fire::before,
-    .card-on-fire::after {
+    .card-on-fire::after,
+    .fire-overlay,
+    .fire-overlay::before,
+    .fire-overlay::after {
       animation: none !important;
     }
   }
