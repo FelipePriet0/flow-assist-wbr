@@ -60,6 +60,16 @@ All colors MUST be HSL.
     --shadow-elegant: 0 12px 30px -12px hsl(var(--brand) / 0.35);
     --shadow-glow: 0 0 40px hsl(var(--brand-accent) / 0.35);
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Agenda tag colors (HSL) */
+    --agenda-tag-approved: 74 100% 50%;
+    --agenda-tag-maintenance: 217 89% 61%;
+    --agenda-tag-installed: 0 0% 72%;
+    --agenda-tag-denied: 18 99% 50%;
+    --agenda-tag-reanalysis: 60 100% 50%;
+    --agenda-tag-orange-cities: 44 97% 50%;
+    --agenda-tag-purple-cities: 108 100% 50%;
+    --agenda-tag-rural: 0 82% 30%;
   }
 
   .dark {
