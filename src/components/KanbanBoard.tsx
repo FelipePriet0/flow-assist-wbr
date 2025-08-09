@@ -39,6 +39,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon, UserPlus, Search } from "lucide-react";
 import ModalEditarFicha from "@/components/ui/ModalEditarFicha";
@@ -244,13 +245,19 @@ export default function KanbanBoard() {
   }, []);
 
   // Actions for Em Análise
-  function moveTo(cardId: string, target: ColumnId) {
+  function moveTo(cardId: string, target: ColumnId, label?: string) {
     setCards((prev) =>
-      prev.map((c) =>
-        c.id === cardId
-          ? { ...c, columnId: target, lastMovedAt: new Date().toISOString() }
-          : c
-      )
+      prev.map((c) => {
+        if (c.id !== cardId) return c;
+        const base = {
+          ...c,
+          columnId: target,
+          lastMovedAt: new Date().toISOString(),
+        };
+        if (!label) return base;
+        const cleaned = c.labels.filter((l) => l !== "Aprovado" && l !== "Negado");
+        return { ...base, labels: Array.from(new Set([...cleaned, label])) };
+      })
     );
   }
 
@@ -479,7 +486,7 @@ function KanbanCard({
 }: {
   card: CardItem;
   onSetResponsavel: (id: string, resp: string) => void;
-  onMove: (id: string, col: ColumnId) => void;
+  onMove: (id: string, col: ColumnId, label?: string) => void;
   onOpen: (card: CardItem) => void;
 }) {
   const overDue = isOverdue(card);
@@ -537,7 +544,7 @@ function KanbanCard({
         <div className="font-medium">{card.nome}</div>
         {headerBadges}
       </div>
-      <div className="p-3 space-y-2">
+      <div className="p-3 relative flex flex-col gap-2">
         <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
           <div>
             <span className="font-medium text-foreground">Recebido: </span>
@@ -590,6 +597,53 @@ function KanbanCard({
             <Button size="sm" variant="secondary" onClick={() => onMove(card.id, "reanalise")} data-ignore-card-click>
               Reanalisar
             </Button>
+          </div>
+        )}
+        {card.columnId === "reanalise" && (
+          <div className="sticky bottom-0 -mx-3 px-3 pt-2 border-t bg-gradient-to-t from-background/90 to-background/0">
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (!card.parecer || !card.parecer.trim()) {
+                    toast({
+                      title: "Preencha o Parecer antes de decidir.",
+                      action: (
+                        <ToastAction altText="Abrir card" onClick={() => onOpen(card)}>
+                          Abrir card
+                        </ToastAction>
+                      ),
+                    });
+                    return;
+                  }
+                  onMove(card.id, "aprovado", "Aprovado");
+                }}
+                data-ignore-card-click
+              >
+                Aprovar
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  if (!card.parecer || !card.parecer.trim()) {
+                    toast({
+                      title: "Preencha o Parecer antes de decidir.",
+                      action: (
+                        <ToastAction altText="Abrir card" onClick={() => onOpen(card)}>
+                          Abrir card
+                        </ToastAction>
+                      ),
+                    });
+                    return;
+                  }
+                  onMove(card.id, "negado_taxa", "Negado");
+                }}
+                data-ignore-card-click
+              >
+                Negar
+              </Button>
+            </div>
           </div>
         )}
       </div>
