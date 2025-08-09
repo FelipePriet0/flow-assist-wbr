@@ -613,20 +613,26 @@ function KanbanCard({
         </div>
 
         {card.columnId === "em_analise" && (
-          <div className="pt-2 flex gap-2">
-            <Button size="sm" onClick={() => onMove(card.id, "aprovado")} data-ignore-card-click>
-              Aprovar
-            </Button>
-            <Button size="sm" variant="destructive" onClick={() => onMove(card.id, "negado_taxa")} data-ignore-card-click>
-              Negar
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => onMove(card.id, "reanalise")} data-ignore-card-click>
-              Reanalisar
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => { onDesingressar(card.id); toast({ title: "Card retornado para Recebidos" }); }} data-ignore-card-click>
-              Desingressar
-            </Button>
-          </div>
+          <>
+            <div className="pt-2 flex gap-2">
+              <Button size="sm" onClick={() => onMove(card.id, "aprovado")} data-ignore-card-click>
+                Aprovar
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => onMove(card.id, "negado_taxa")} data-ignore-card-click>
+                Negar
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => onMove(card.id, "reanalise")} data-ignore-card-click>
+                Reanalisar
+              </Button>
+            </div>
+            <div className="sticky bottom-0 -mx-3 px-3 pt-2 border-t bg-gradient-to-t from-background/90 to-background/0">
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" onClick={() => { onDesingressar(card.id); toast({ title: "Card retornado para Recebidos" }); }} data-ignore-card-click>
+                  Desingressar
+                </Button>
+              </div>
+            </div>
+          </>
         )}
         {card.columnId === "recebido" && (
           <div className="sticky bottom-0 -mx-3 px-3 pt-2 border-t bg-gradient-to-t from-background/90 to-background/0">
