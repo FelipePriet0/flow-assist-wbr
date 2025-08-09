@@ -13,15 +13,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "@/hooks/use-toast";
 
 interface ModalEditarFichaProps {
   card: any;
   responsaveis?: string[];
   onClose: () => void;
   onSave: (updatedCard: any) => void;
+  onDesingressar?: (id: string) => void;
 }
 
-export default function ModalEditarFicha({ card, onClose, onSave, responsaveis = [] }: ModalEditarFichaProps) {
+export default function ModalEditarFicha({ card, onClose, onSave, onDesingressar, responsaveis = [] }: ModalEditarFichaProps) {
   const [form, setForm] = useState({
     nome: card?.nome ?? "",
     telefone: card?.telefone ?? "",
@@ -83,10 +85,18 @@ export default function ModalEditarFicha({ card, onClose, onSave, responsaveis =
           </div>
         </div>
 
-        <div className="flex justify-between mt-6">
+        <div className="flex items-center justify-between mt-6">
           <Button variant="secondary" onClick={onClose}>Sair</Button>
-          <Button onClick={handleSave}>Salvar Alterações</Button>
+          <div className="flex gap-2">
+            {card?.columnId === "em_analise" && (
+              <Button variant="secondary" onClick={() => { onDesingressar?.(card.id); toast({ title: "Card retornado para Recebidos" }); onClose(); }}>
+                Desingressar
+              </Button>
+            )}
+            <Button onClick={handleSave}>Salvar Alterações</Button>
+          </div>
         </div>
+
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>

@@ -625,13 +625,6 @@ function KanbanCard({
                 Reanalisar
               </Button>
             </div>
-            <div className="sticky bottom-0 -mx-3 px-3 pt-2 border-t bg-gradient-to-t from-background/90 to-background/0">
-              <div className="flex gap-2">
-                <Button size="sm" variant="secondary" onClick={() => { onDesingressar(card.id); toast({ title: "Card retornado para Recebidos" }); }} data-ignore-card-click>
-                  Desingressar
-                </Button>
-              </div>
-            </div>
           </>
         )}
         {card.columnId === "recebido" && (
