@@ -283,6 +283,7 @@ export default function KanbanBoard() {
   }
   
   function unassignAndReturn(cardId: string) {
+    console.log("unassignAndReturn called", cardId);
     setCards((prev) =>
       prev.map((c) => {
         if (c.id !== cardId) return c;
@@ -428,6 +429,7 @@ export default function KanbanBoard() {
         <ModalEditarFicha
           card={mockCard}
           responsaveis={responsaveisOptions}
+          onDesingressar={unassignAndReturn}
           onClose={() => setMockCard(null)}
           onSave={(form: any) => {
             setCards((prev) =>
