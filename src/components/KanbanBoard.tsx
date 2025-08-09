@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon, UserPlus, Search } from "lucide-react";
 import ModalEditarFicha from "@/components/ui/ModalEditarFicha";
 import NovaFichaComercialForm, { ComercialFormValues } from "@/components/NovaFichaComercialForm";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 // Types
 export type ColumnId =
@@ -176,6 +177,8 @@ export default function KanbanBoard() {
   } | null>(null);
   const [mockCard, setMockCard] = useState<CardItem | null>(null);
 
+  const { name: currentUserName } = useCurrentUser();
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
@@ -273,6 +276,21 @@ export default function KanbanBoard() {
           responsavel: resp,
           labels: Array.from(nextLabels),
           columnId: isInRecebido ? "em_analise" : c.columnId,
+          lastMovedAt: new Date().toISOString(),
+        };
+      })
+    );
+  }
+  
+  function unassignAndReturn(cardId: string) {
+    setCards((prev) =>
+      prev.map((c) => {
+        if (c.id !== cardId) return c;
+        return {
+          ...c,
+          responsavel: undefined,
+          columnId: "recebido",
+          labels: c.labels.filter((l) => l !== "Em Análise"),
           lastMovedAt: new Date().toISOString(),
         };
       })
@@ -421,7 +439,7 @@ export default function KanbanBoard() {
                       telefone: form.telefone || undefined,
                       responsavel: form.responsavel || undefined,
                       deadline: form.agendamento ? new Date(form.agendamento).toISOString() : c.deadline,
-                      receivedAt: form.recebido_em ? new Date(form.recebido_em).toISOString() : c.receivedAt,
+                      receivedAt: c.columnId === "recebido" ? c.receivedAt : (form.recebido_em ? new Date(form.recebido_em).toISOString() : c.receivedAt),
                       updatedAt: new Date().toISOString(),
                     }
                   : c
@@ -454,7 +472,7 @@ export default function KanbanBoard() {
                     {filteredCards
                       .filter((c) => c.columnId === col.id)
                       .map((card) => (
-                        <KanbanCard key={card.id} card={card} onSetResponsavel={setResponsavel} onMove={moveTo} onOpen={openEdit} />
+                        <KanbanCard key={card.id} card={card} responsaveis={responsaveisOptions} currentUserName={currentUserName} onSetResponsavel={setResponsavel} onMove={moveTo} onOpen={openEdit} onDesingressar={unassignAndReturn} />
                       ))}
                   </ColumnDropArea>
                 </SortableContext>
@@ -480,14 +498,20 @@ function ColumnDropArea({ columnId, children }: { columnId: ColumnId; children: 
 // Card component
 function KanbanCard({
   card,
+  responsaveis,
+  currentUserName,
   onSetResponsavel,
   onMove,
   onOpen,
+  onDesingressar,
 }: {
   card: CardItem;
+  responsaveis: string[];
+  currentUserName: string;
   onSetResponsavel: (id: string, resp: string) => void;
   onMove: (id: string, col: ColumnId, label?: string) => void;
   onOpen: (card: CardItem) => void;
+  onDesingressar: (id: string) => void;
 }) {
   const overDue = isOverdue(card);
   const fireColumns = new Set<ColumnId>(["recebido", "em_analise", "reanalise", "aprovado"]);
@@ -579,7 +603,7 @@ function KanbanCard({
               <SelectValue placeholder="Atribuir" />
             </SelectTrigger>
             <SelectContent className="z-50">
-              {RESPONSAVEIS.map((r) => (
+              {responsaveis.map((r) => (
                 <SelectItem key={r} value={r}>
                   {r}
                 </SelectItem>
@@ -593,10 +617,31 @@ function KanbanCard({
             <Button size="sm" onClick={() => onMove(card.id, "aprovado")} data-ignore-card-click>
               Aprovar
             </Button>
-            <Button size="sm" variant="destructive" onClick={() => onMove(card.id, "negado_taxa")} data-ignore-card-click>Negar</Button>
+            <Button size="sm" variant="destructive" onClick={() => onMove(card.id, "negado_taxa")} data-ignore-card-click>
+              Negar
+            </Button>
             <Button size="sm" variant="secondary" onClick={() => onMove(card.id, "reanalise")} data-ignore-card-click>
               Reanalisar
             </Button>
+            <Button size="sm" variant="secondary" onClick={() => { onDesingressar(card.id); toast({ title: "Card retornado para Recebidos" }); }} data-ignore-card-click>
+              Desingressar
+            </Button>
+          </div>
+        )}
+        {card.columnId === "recebido" && (
+          <div className="sticky bottom-0 -mx-3 px-3 pt-2 border-t bg-gradient-to-t from-background/90 to-background/0">
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => {
+                  onSetResponsavel(card.id, currentUserName);
+                  toast({ title: "Ingresso efetuado" });
+                }}
+                data-ignore-card-click
+              >
+                Ingressar
+              </Button>
+            </div>
           </div>
         )}
         {card.columnId === "reanalise" && (

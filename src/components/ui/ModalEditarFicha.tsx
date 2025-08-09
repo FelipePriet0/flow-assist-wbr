@@ -79,7 +79,7 @@ export default function ModalEditarFicha({ card, onClose, onSave, responsaveis =
 
           <div className="space-y-2">
             <Label>Recebido em</Label>
-            <Input name="recebido_em" type="date" value={form.recebido_em} onChange={handleChange} />
+            <Input name="recebido_em" type="date" value={form.recebido_em} onChange={handleChange} disabled={card?.columnId === "recebido"} title={card?.columnId === "recebido" ? "Não é possível alterar quando na coluna Recebidos" : undefined} />
           </div>
         </div>
 
