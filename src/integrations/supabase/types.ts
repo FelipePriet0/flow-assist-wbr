@@ -236,11 +236,13 @@ export type Database = {
           analyst_id: string | null
           analyst_name: string | null
           comments: string | null
+          company_id: string | null
           created_at: string | null
           created_by: string | null
           customer_id: string
           due_at: string | null
           id: string
+          reanalysis_notes: string | null
           received_at: string | null
           status: string | null
         }
@@ -248,11 +250,13 @@ export type Database = {
           analyst_id?: string | null
           analyst_name?: string | null
           comments?: string | null
+          company_id?: string | null
           created_at?: string | null
           created_by?: string | null
           customer_id: string
           due_at?: string | null
           id?: string
+          reanalysis_notes?: string | null
           received_at?: string | null
           status?: string | null
         }
@@ -260,15 +264,24 @@ export type Database = {
           analyst_id?: string | null
           analyst_name?: string | null
           comments?: string | null
+          company_id?: string | null
           created_at?: string | null
           created_by?: string | null
           customer_id?: string
           due_at?: string | null
           id?: string
+          reanalysis_notes?: string | null
           received_at?: string | null
           status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "applications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "applications_customer_id_fkey"
             columns: ["customer_id"]
@@ -282,6 +295,7 @@ export type Database = {
         Row: {
           application_id: string | null
           city: string | null
+          company_id: string | null
           customer_name: string | null
           date: string
           id: string
@@ -294,6 +308,7 @@ export type Database = {
         Insert: {
           application_id?: string | null
           city?: string | null
+          company_id?: string | null
           customer_name?: string | null
           date: string
           id?: string
@@ -306,6 +321,7 @@ export type Database = {
         Update: {
           application_id?: string | null
           city?: string | null
+          company_id?: string | null
           customer_name?: string | null
           date?: string
           id?: string
@@ -329,6 +345,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_app_cohort"
             referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "appointments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "appointments_label_id_fkey"
@@ -387,6 +410,30 @@ export type Database = {
             referencedColumns: ["application_id"]
           },
         ]
+      }
+      companies: {
+        Row: {
+          code: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+        }
+        Relationships: []
       }
       customers: {
         Row: {
@@ -583,6 +630,35 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          company_id: string | null
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+        }
+        Insert: {
+          company_id?: string | null
+          full_name?: string | null
+          id: string
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Update: {
+          company_id?: string | null
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       references_personal: {
         Row: {
           application_id: string
@@ -725,10 +801,35 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      applications_change_status: {
+        Args: {
+          p_app_id: string
+          p_new_status: Database["public"]["Enums"]["app_status"]
+          p_comment?: string
+        }
+        Returns: undefined
+      }
+      current_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          company_id: string | null
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+        }
+      }
+      is_premium: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      same_company: {
+        Args: { target: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_status: "pendente" | "aprovado" | "negado" | "reanalisar"
+      user_role: "analista_premium" | "reanalista" | "comercial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -855,6 +956,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_status: ["pendente", "aprovado", "negado", "reanalisar"],
+      user_role: ["analista_premium", "reanalista", "comercial"],
+    },
   },
 } as const
