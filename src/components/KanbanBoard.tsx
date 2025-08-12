@@ -45,6 +45,8 @@ import { Calendar as CalendarIcon, UserPlus, Search } from "lucide-react";
 import ModalEditarFicha from "@/components/ui/ModalEditarFicha";
 import NovaFichaComercialForm, { ComercialFormValues } from "@/components/NovaFichaComercialForm";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useAuth } from "@/context/AuthContext";
+import { canChangeStatus } from "@/lib/access";
 
 // Types
 export type ColumnId =
@@ -515,6 +517,8 @@ function KanbanCard({
   onOpen: (card: CardItem) => void;
   onDesingressar: (id: string) => void;
 }) {
+  const { profile } = useAuth();
+  const allowDecide = canChangeStatus(profile);
   const overDue = isOverdue(card);
   const fireColumns = new Set<ColumnId>(["recebido", "em_analise", "reanalise", "aprovado"]);
   const msUntil = new Date(card.deadline).getTime() - Date.now();
@@ -614,7 +618,7 @@ function KanbanCard({
           </Select>
         </div>
 
-        {card.columnId === "em_analise" && (
+        {card.columnId === "em_analise" && allowDecide && (
           <>
             <div className="pt-2 flex gap-2">
               <Button size="sm" onClick={() => onMove(card.id, "aprovado")} data-ignore-card-click>
@@ -645,7 +649,7 @@ function KanbanCard({
             </div>
           </div>
         )}
-        {card.columnId === "reanalise" && (
+        {card.columnId === "reanalise" && allowDecide && (
           <div className="sticky bottom-0 -mx-3 px-3 pt-2 border-t bg-gradient-to-t from-background/90 to-background/0">
             <div className="flex gap-2">
               <Button
