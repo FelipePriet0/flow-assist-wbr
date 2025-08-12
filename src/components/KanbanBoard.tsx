@@ -180,6 +180,8 @@ export default function KanbanBoard() {
   const [mockCard, setMockCard] = useState<CardItem | null>(null);
 
   const { name: currentUserName } = useCurrentUser();
+  const { profile } = useAuth();
+  const allowMove = canChangeStatus(profile);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -195,6 +197,7 @@ export default function KanbanBoard() {
   }, [cards]);
 
   function handleDragEnd(event: DragEndEvent) {
+    if (!allowMove) return;
     const { active, over } = event;
     if (!over) return;
     const cardId = active.id as string;
@@ -277,8 +280,8 @@ export default function KanbanBoard() {
           ...c,
           responsavel: resp,
           labels: Array.from(nextLabels),
-          columnId: isInRecebido ? "em_analise" : c.columnId,
-          lastMovedAt: new Date().toISOString(),
+          columnId: allowMove && isInRecebido ? "em_analise" : c.columnId,
+          lastMovedAt: allowMove && isInRecebido ? new Date().toISOString() : c.lastMovedAt,
         };
       })
     );
@@ -538,7 +541,7 @@ function KanbanCard({
     </div>
   );
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, disabled: !allowDecide });
   const dragStyle = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
 
   function handleCardClick(e: React.MouseEvent) {
@@ -556,7 +559,8 @@ function KanbanCard({
       {...attributes}
       onClick={handleCardClick}
       className={cn(
-        "kanban-card rounded-xl border bg-card shadow-sm hover-scale cursor-grab active:cursor-grabbing",
+        "kanban-card rounded-xl border bg-card shadow-sm hover-scale",
+        allowDecide ? "cursor-grab active:cursor-grabbing" : "cursor-default select-none",
         overDue ? "ring-2 ring-[hsl(var(--destructive))]" : "",
         onFire ? "card-on-fire animate-fire-flicker" : "",
         isDragging ? "dragging opacity-80" : ""
@@ -605,7 +609,7 @@ function KanbanCard({
         <div className="flex items-center gap-2">
           <Label className="text-sm" data-ignore-card-click>Responsável</Label>
           <Select value={card.responsavel} onValueChange={(v) => onSetResponsavel(card.id, v)}>
-            <SelectTrigger className="h-8" data-ignore-card-click>
+            <SelectTrigger className="h-8" data-ignore-card-click disabled={!allowDecide}>
               <SelectValue placeholder="Atribuir" />
             </SelectTrigger>
             <SelectContent className="z-50">
@@ -638,6 +642,7 @@ function KanbanCard({
             <div className="flex gap-2">
               <Button
                 size="sm"
+                disabled={!allowDecide}
                 onClick={() => {
                   onSetResponsavel(card.id, currentUserName);
                   toast({ title: "Ingresso efetuado" });
