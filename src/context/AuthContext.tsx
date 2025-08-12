@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // 1) Listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
+      // eslint-disable-next-line no-console
+      console.log("[Auth] onAuthStateChange:", event, !!sess?.user);
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
@@ -40,6 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // 2) Then get existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      // eslint-disable-next-line no-console
+      console.log("[Auth] getSession -> has session?", !!session?.user);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -53,14 +58,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function fetchProfile(userId: string) {
+    setLoading(true);
+    // eslint-disable-next-line no-console
+    console.log("[Auth] Fetching profile for:", userId);
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, role, company_id")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
+
       if (error) throw error;
-      setProfile(data as Profile);
+
+      if (!data) {
+        // eslint-disable-next-line no-console
+        console.warn("[Auth] No profile row found for user yet.");
+        setProfile(null);
+      } else {
+        setProfile(data as Profile);
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error("Failed to load profile", e);
@@ -83,4 +99,3 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
-}

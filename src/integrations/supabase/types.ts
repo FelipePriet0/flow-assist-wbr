@@ -632,18 +632,21 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           company_id: string | null
           full_name: string | null
           id: string
           role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
+          avatar_url?: string | null
           company_id?: string | null
           full_name?: string | null
           id: string
           role?: Database["public"]["Enums"]["user_role"]
         }
         Update: {
+          avatar_url?: string | null
           company_id?: string | null
           full_name?: string | null
           id?: string
@@ -812,6 +815,7 @@ export type Database = {
       current_profile: {
         Args: Record<PropertyKey, never>
         Returns: {
+          avatar_url: string | null
           company_id: string | null
           full_name: string | null
           id: string
@@ -825,6 +829,16 @@ export type Database = {
       same_company: {
         Args: { target: string }
         Returns: boolean
+      }
+      update_profile: {
+        Args: { p_full_name: string; p_avatar_url: string }
+        Returns: {
+          avatar_url: string | null
+          company_id: string | null
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+        }
       }
     }
     Enums: {
