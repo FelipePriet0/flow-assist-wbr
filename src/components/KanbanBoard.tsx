@@ -46,7 +46,9 @@ import ModalEditarFicha from "@/components/ui/ModalEditarFicha";
 import NovaFichaComercialForm, { ComercialFormValues } from "@/components/NovaFichaComercialForm";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useAuth } from "@/context/AuthContext";
-import { canChangeStatus } from "@/lib/access";
+import { canChangeStatus, isPremium } from "@/lib/access";
+import wbrLogo from "@/assets/wbr-logo.svg";
+import mznetLogo from "@/assets/mznet-logo.svg";
 
 // Types
 export type ColumnId =
@@ -524,13 +526,25 @@ function KanbanCard({
 }) {
   const { profile } = useAuth();
   const allowDecide = canChangeStatus(profile);
+  const premium = isPremium(profile);
   const overDue = isOverdue(card);
   const fireColumns = new Set<ColumnId>(["recebido", "em_analise", "reanalise", "aprovado"]);
   const msUntil = new Date(card.deadline).getTime() - Date.now();
   const onFire = fireColumns.has(card.columnId) && msUntil >= 0 && msUntil <= 24 * 60 * 60 * 1000;
+
+  const COMPANY_MAP: Record<string, { name: string; src: string }> = {
+    UUID_WBR: { name: "WBR", src: wbrLogo },
+    UUID_MZNET: { name: "Mznet", src: mznetLogo },
+  };
+  const resolvedCompanyId = (card.companyId ?? profile?.company_id) || "";
+  const companyLogo = COMPANY_MAP[resolvedCompanyId]?.src;
+  const companyName = COMPANY_MAP[resolvedCompanyId]?.name ?? "Empresa";
+
+  const displayLabels = premium ? card.labels.filter((l) => l !== "Em Análise") : card.labels;
+
   const headerBadges = (
     <div className="flex gap-2 flex-wrap">
-      {card.labels.map((l) => (
+      {displayLabels.map((l) => (
         <Badge key={l} variant="secondary">
           {l}
         </Badge>
