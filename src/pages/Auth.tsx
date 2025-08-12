@@ -33,6 +33,26 @@ const Auth = () => {
     document.title = mode === "signin" ? "Entrar – WBR" : "Cadastrar – WBR";
   }, [mode]);
 
+  // Redireciona automaticamente se já estiver autenticado
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        // Deferir para evitar deadlocks
+        setTimeout(() => {
+          redirectAfterLogin();
+        }, 0);
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        redirectAfterLogin();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
