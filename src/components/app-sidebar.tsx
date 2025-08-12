@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { CalendarDays, KanbanSquare } from "lucide-react";
+import { CalendarDays, KanbanSquare, User } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +20,7 @@ export function AppSidebar() {
   const items = [
     { title: "Kanban", url: "/", icon: KanbanSquare },
     { title: "Agenda", url: "/agenda", icon: CalendarDays },
+    { title: "Perfil", url: "/perfil", icon: User },
   ];
 
   return (

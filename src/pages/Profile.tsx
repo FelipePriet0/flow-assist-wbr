@@ -1,11 +1,12 @@
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
 
 export default function Profile() {
@@ -14,6 +15,8 @@ export default function Profile() {
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [companyName, setCompanyName] = useState<string>("-");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const email = user?.email ?? "-";
   const role = profile?.role ?? "-";
@@ -64,16 +67,52 @@ export default function Profile() {
     return "-";
   }, [role]);
 
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
+  };
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    try {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!user?.id) {
+        toast({ title: "Você precisa estar autenticado." });
+        return;
+      }
+      setUploading(true);
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/${Date.now()}.${ext ?? "png"}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, {
+          upsert: true,
+          contentType: file.type || "image/*",
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      if (data?.publicUrl) {
+        setAvatarUrl(data.publicUrl);
+        toast({ title: "Avatar enviado com sucesso." });
+      }
+    } catch (e: any) {
+      toast({ title: "Falha no upload do avatar", description: e?.message ?? "Tente novamente." });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   async function handleSave() {
     if (!user?.id) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ full_name: fullName, avatar_url: avatarUrl })
-        .eq("id", user.id)
-        .select("id")
-        .maybeSingle();
+      const { error } = await supabase.rpc("update_profile", {
+        p_full_name: fullName,
+        p_avatar_url: avatarUrl,
+      });
 
       if (error) throw error;
       toast({ title: "Perfil atualizado com sucesso." });
@@ -107,6 +146,33 @@ export default function Profile() {
             <CardTitle>Seu perfil</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <section className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={avatarUrl} alt={`Avatar de ${fullName || email}`} />
+                <AvatarFallback>{(fullName || email || "-").charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                  />
+                  <Button type="button" variant="secondary" onClick={triggerFileSelect} disabled={uploading}>
+                    {uploading ? "Enviando..." : "Enviar avatar"}
+                  </Button>
+                  {avatarUrl && (
+                    <Button type="button" variant="outline" onClick={() => setAvatarUrl("")} disabled={uploading}>
+                      Remover
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Imagem pública. Recomendada 256x256.</p>
+              </div>
+            </section>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="email">E-mail</Label>
@@ -144,7 +210,7 @@ export default function Profile() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button onClick={handleSave} disabled={saving}>
+              <Button onClick={handleSave} disabled={saving || uploading}>
                 {saving ? "Salvando..." : "Salvar"}
               </Button>
               <Button variant="secondary" onClick={signOut}>
@@ -153,7 +219,7 @@ export default function Profile() {
             </div>
 
             <p className="text-sm text-muted-foreground pt-2">
-              Observação: upload de imagem de avatar será habilitado na próxima etapa (Storage).
+              Observação: o avatar enviado é público no bucket "avatars".
             </p>
           </CardContent>
         </Card>
