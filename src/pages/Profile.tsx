@@ -8,7 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
-
+import { useNavigate } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 export default function Profile() {
   const { user, profile, signOut } = useAuth();
   const [fullName, setFullName] = useState(profile?.full_name ?? "");
@@ -16,10 +27,12 @@ export default function Profile() {
   const [companyName, setCompanyName] = useState<string>("-");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const email = user?.email ?? "-";
   const role = profile?.role ?? "-";
+  const navigate = useNavigate();
 
   useEffect(() => {
     setFullName(profile?.full_name ?? "");
@@ -123,6 +136,19 @@ export default function Profile() {
     }
   }
 
+  async function handleLogoutConfirm() {
+    setLoggingOut(true);
+    try {
+      await signOut();
+      toast({ title: "Você saiu com sucesso." });
+      navigate("/auth", { replace: true });
+    } catch (e: any) {
+      toast({ title: "Falha ao sair", description: e?.message ?? "Tente novamente." });
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   if (!user) {
     return (
       <main className="p-6">
@@ -213,9 +239,27 @@ export default function Profile() {
               <Button onClick={handleSave} disabled={saving || uploading}>
                 {saving ? "Salvando..." : "Salvar"}
               </Button>
-              <Button variant="secondary" onClick={signOut}>
-                Sair
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="secondary" disabled={loggingOut}>
+                    {loggingOut ? "Saindo..." : "Sair"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Deseja sair da sua conta?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Você precisará fazer login novamente para acessar o sistema.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={loggingOut}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleLogoutConfirm} disabled={loggingOut}>
+                      {loggingOut ? "Saindo..." : "Sair"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
 
             <p className="text-sm text-muted-foreground pt-2">
