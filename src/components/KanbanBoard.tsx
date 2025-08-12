@@ -76,6 +76,7 @@ export interface CardItem {
   updatedAt: string; // ISO
   lastMovedAt: string; // ISO
   labels: string[];
+  companyId?: string;
 }
 
 const COLUMNS: { id: ColumnId; title: string }[] = [
@@ -417,6 +418,7 @@ export default function KanbanBoard() {
                       createdAt: now.toISOString(),
                       updatedAt: now.toISOString(),
                       lastMovedAt: now.toISOString(),
+                      companyId: profile?.company_id || undefined,
                       labels: [],
                     }
                     setCards((prev) => [newCard, ...prev])
