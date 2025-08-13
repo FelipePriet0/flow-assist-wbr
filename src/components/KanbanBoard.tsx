@@ -531,17 +531,16 @@ function KanbanCard({
   const fireColumns = new Set<ColumnId>(["recebido", "em_analise", "reanalise", "aprovado"]);
   const msUntil = new Date(card.deadline).getTime() - Date.now();
   const onFire = fireColumns.has(card.columnId) && msUntil >= 0 && msUntil <= 24 * 60 * 60 * 1000;
-  const prazoAtrasado = new Date(card.deadline) < new Date();
 
   const COMPANY_MAP: Record<string, { name: string; src: string }> = {
-    "38f31fb4-e7bc-44d8-9aaf-85ecaf69f514": { name: "WBR Net", src: wbrLogo },
-    "c7ee5a75-8412-48a9-a30e-dac354a4af52": { name: "Mznet", src: mznetLogo },
+    UUID_WBR: { name: "WBR", src: wbrLogo },
+    UUID_MZNET: { name: "Mznet", src: mznetLogo },
   };
   const resolvedCompanyId = (card.companyId ?? profile?.company_id) || "";
   const companyLogo = COMPANY_MAP[resolvedCompanyId]?.src;
   const companyName = COMPANY_MAP[resolvedCompanyId]?.name ?? "Empresa";
 
-  const displayLabels = card.columnId === "em_analise" && prazoAtrasado ? card.labels.filter((l) => l !== "Em Análise") : card.labels;
+  const displayLabels = premium ? card.labels.filter((l) => l !== "Em Análise") : card.labels;
 
   const headerBadges = (
     <div className="flex gap-2 flex-wrap">
@@ -578,7 +577,7 @@ function KanbanCard({
       className={cn(
         "kanban-card rounded-xl border bg-card shadow-sm hover-scale",
         allowDecide ? "cursor-grab active:cursor-grabbing" : "cursor-default select-none",
-        overDue ? (premium ? "fire-border" : "ring-2 ring-[hsl(var(--destructive))]") : "",
+        overDue ? "ring-2 ring-[hsl(var(--destructive))]" : "",
         onFire ? "card-on-fire animate-fire-flicker" : "",
         isDragging ? "dragging opacity-80" : ""
       )}
@@ -592,19 +591,7 @@ function KanbanCard({
       )}
 
       <div className="p-3 border-b flex items-center justify-between">
-        <div className="font-medium flex items-center gap-2">
-          {companyLogo && (
-            <img
-              src={companyLogo}
-              alt={`Logo ${companyName}`}
-              className="h-5 w-5 rounded-sm"
-              loading="lazy"
-              width={20}
-              height={20}
-            />
-          )}
-          <span>{card.nome}</span>
-        </div>
+        <div className="font-medium">{card.nome}</div>
         {headerBadges}
       </div>
       <div className="p-3 relative flex flex-col gap-2">

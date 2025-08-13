@@ -348,49 +348,6 @@ All colors MUST be HSL.
     100% { transform: translateY(-2px) scaleY(1.04) rotate(1deg); }
   }
 
-  /* Animated fire border for overdue cards (premium) */
-  .fire-border {
-    position: relative;
-    box-shadow: 0 0 0 1px hsl(var(--destructive) / 0.2) inset;
-  }
-  .fire-border::before {
-    content: "";
-    position: absolute;
-    inset: -3px;
-    border-radius: inherit;
-    padding: 3px;
-    background:
-      conic-gradient(
-        from 0deg,
-        hsl(var(--warning)) 0%,
-        hsl(var(--destructive)) 20%,
-        hsl(var(--warning)) 40%,
-        hsl(var(--destructive)) 60%,
-        hsl(var(--warning)) 80%,
-        hsl(var(--destructive)) 100%
-      );
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-            mask-composite: exclude;
-    animation: fire-border-rotate 1.4s linear infinite;
-    filter: blur(1px) saturate(1.2);
-  }
-  .fire-border::after {
-    content: "";
-    position: absolute;
-    inset: -6px;
-    border-radius: inherit;
-    background: radial-gradient(40% 60% at 50% 0%, hsl(var(--warning) / 0.15), transparent 70%);
-    filter: blur(10px);
-    z-index: -1;
-    pointer-events: none;
-  }
-  @keyframes fire-border-rotate {
-    to { transform: rotate(360deg); }
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .card-on-fire,
     .card-on-fire::before,
