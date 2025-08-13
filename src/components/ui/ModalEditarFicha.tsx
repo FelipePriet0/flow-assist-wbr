@@ -28,25 +28,67 @@ interface ModalEditarFichaProps {
 }
 
 export default function ModalEditarFicha({ card, onClose, onSave, onDesingressar, responsaveis = [], onRefetch }: ModalEditarFichaProps) {
-  const [form, setForm] = useState({
+  const initialForm = {
     nome: card?.nome ?? "",
     telefone: card?.telefone ?? "",
     responsavel: card?.responsavel ?? "",
     agendamento: card?.deadline ? new Date(card.deadline).toISOString().slice(0, 10) : "",
     recebido_em: card?.receivedAt ? new Date(card.receivedAt).toISOString().slice(0, 10) : "",
-  });
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  };
+  
+  const [form, setForm] = useState(initialForm);
+  const [showFirstConfirmDialog, setShowFirstConfirmDialog] = useState(false);
+  const [showSecondConfirmDialog, setShowSecondConfirmDialog] = useState(false);
   const [showExpandedModal, setShowExpandedModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'close' | 'save' | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => setConfirmOpen(true);
+  // Check if form has changes
+  const hasChanges = () => {
+    return JSON.stringify(form) !== JSON.stringify(initialForm);
+  };
 
-  const confirmSave = () => {
+  const handleClose = () => {
+    if (!hasChanges()) {
+      onClose();
+      return;
+    }
+    setPendingAction('close');
+    setShowFirstConfirmDialog(true);
+  };
+
+  const handleSave = () => {
+    if (!hasChanges()) {
+      onSave(form);
+      return;
+    }
+    setPendingAction('save');
+    setShowFirstConfirmDialog(true);
+  };
+
+  const handleFirstConfirm = () => {
+    setShowFirstConfirmDialog(false);
+    setShowSecondConfirmDialog(true);
+  };
+
+  const handleSecondConfirm = () => {
+    setShowSecondConfirmDialog(false);
     onSave(form);
+    if (pendingAction === 'close') {
+      onClose();
+    }
+    setPendingAction(null);
+  };
+
+  const handleDiscardChanges = () => {
+    setShowFirstConfirmDialog(false);
+    setShowSecondConfirmDialog(false);
+    setPendingAction(null);
+    onClose();
   };
 
   const handleExpandedSubmit = async (data: ComercialFormValues) => {
@@ -69,14 +111,14 @@ export default function ModalEditarFicha({ card, onClose, onSave, onDesingressar
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => e.preventDefault()}>
         <div className="bg-background text-foreground p-6 rounded-md shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Editar Ficha</h2>
             <Button
               variant="ghost"
               size="sm"
-              onClick={onClose}
+              onClick={handleClose}
               className="h-8 w-8 p-0"
               aria-label="Fechar"
             >
@@ -140,15 +182,45 @@ export default function ModalEditarFicha({ card, onClose, onSave, onDesingressar
         </div>
       </div>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      {/* First confirmation dialog */}
+      <AlertDialog open={showFirstConfirmDialog} onOpenChange={setShowFirstConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar alterações?</AlertDialogTitle>
-            <AlertDialogDescription>As alterações serão aplicadas à ficha.</AlertDialogDescription>
+            <AlertDialogTitle>Você deseja alterar as informações dessa ficha?</AlertDialogTitle>
+            <AlertDialogDescription>
+              As informações serão atualizadas permanentemente.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSave}>Confirmar</AlertDialogAction>
+            <AlertDialogCancel onClick={handleDiscardChanges}>
+              Descartar alterações
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleFirstConfirm}>
+              Sim, alterar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Second confirmation dialog */}
+      <AlertDialog open={showSecondConfirmDialog} onOpenChange={setShowSecondConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza que deseja alterar as informações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowSecondConfirmDialog(false);
+              setPendingAction(null);
+            }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleSecondConfirm}>
+              Confirmar alteração
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
