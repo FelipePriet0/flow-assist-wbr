@@ -284,66 +284,71 @@ export default function KanbanBoard() {
     });
   }, [cards, query, responsavelFiltro, prazoFiltro, viewFilter, profile]);
 
-// New card creation handled by NovaFichaComercialForm component
 // Load applications from Supabase (with company and customer for logos and names)
+const loadApplications = async () => {
+  try {
+    const { data, error } = await supabase
+      .from("applications")
+      .select(`
+        id,
+        status,
+        analyst_name,
+        comments,
+        received_at,
+        due_at,
+        created_at,
+        company_id,
+        assigned_reanalyst,
+        companies:company_id ( name, logo_url ),
+        customers:customer_id ( full_name, phone, cpf ),
+        reanalyst:assigned_reanalyst ( full_name, avatar_url )
+      `)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    if (!data) return;
+    const mapped: CardItem[] = (data as any[]).map((row: any) => {
+      const createdAt = row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString();
+      const receivedAt = row.received_at ? new Date(row.received_at).toISOString() : createdAt;
+      const deadline = row.due_at ? new Date(row.due_at).toISOString() : createdAt;
+      const col = (row.status as ColumnId) ?? "recebido";
+      return {
+        id: row.id,
+        nome: row.customers?.full_name ?? "Cliente",
+        cpf: row.customers?.cpf ?? "",
+        receivedAt,
+        deadline,
+        responsavel: row.analyst_name ?? undefined,
+        telefone: row.customers?.phone ?? undefined,
+        score: undefined,
+        checks: { moradia: false, emprego: false, vinculos: false },
+        parecer: row.comments ?? "",
+        columnId: col,
+        createdAt,
+        updatedAt: createdAt,
+        lastMovedAt: createdAt,
+        labels: [],
+        companyId: row.company_id ?? undefined,
+        companyName: row.companies?.name ?? undefined,
+        companyLogoUrl: row.companies?.logo_url ?? undefined,
+        assignedReanalyst: row.assigned_reanalyst ?? undefined,
+        reanalystName: row.reanalyst?.full_name ?? undefined,
+        reanalystAvatarUrl: row.reanalyst?.avatar_url ?? undefined,
+        analystName: row.analyst_name ?? undefined,
+      } as CardItem;
+    });
+    setCards(mapped);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[Kanban] Falha ao carregar aplicações", e);
+  }
+};
+
+// New card creation handled by NovaFichaComercialForm component
 useEffect(() => {
   let mounted = true;
   const load = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("applications")
-        .select(`
-          id,
-          status,
-          analyst_name,
-          comments,
-          received_at,
-          due_at,
-          created_at,
-          company_id,
-          assigned_reanalyst,
-          companies:company_id ( name, logo_url ),
-          customers:customer_id ( full_name, phone, cpf ),
-          reanalyst:assigned_reanalyst ( full_name, avatar_url )
-        `)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      if (!mounted || !data) return;
-      const mapped: CardItem[] = (data as any[]).map((row: any) => {
-        const createdAt = row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString();
-        const receivedAt = row.received_at ? new Date(row.received_at).toISOString() : createdAt;
-        const deadline = row.due_at ? new Date(row.due_at).toISOString() : createdAt;
-        const col = (row.status as ColumnId) ?? "recebido";
-        return {
-          id: row.id,
-          nome: row.customers?.full_name ?? "Cliente",
-          cpf: row.customers?.cpf ?? "",
-          receivedAt,
-          deadline,
-          responsavel: row.analyst_name ?? undefined,
-          telefone: row.customers?.phone ?? undefined,
-          score: undefined,
-          checks: { moradia: false, emprego: false, vinculos: false },
-          parecer: row.comments ?? "",
-          columnId: col,
-          createdAt,
-          updatedAt: createdAt,
-          lastMovedAt: createdAt,
-          labels: [],
-          companyId: row.company_id ?? undefined,
-          companyName: row.companies?.name ?? undefined,
-          companyLogoUrl: row.companies?.logo_url ?? undefined,
-          assignedReanalyst: row.assigned_reanalyst ?? undefined,
-          reanalystName: row.reanalyst?.full_name ?? undefined,
-          reanalystAvatarUrl: row.reanalyst?.avatar_url ?? undefined,
-          analystName: row.analyst_name ?? undefined,
-        } as CardItem;
-      });
-      setCards(mapped);
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error("[Kanban] Falha ao carregar aplicações", e);
-    }
+    if (!mounted) return;
+    await loadApplications();
   };
   
   const loadReanalysts = async () => {
@@ -1039,6 +1044,7 @@ useEffect(() => {
           responsaveis={responsaveisOptions}
           onDesingressar={unassignAndReturn}
           onClose={() => setMockCard(null)}
+          onRefetch={loadApplications}
           onSave={(form: any) => {
             setCards((prev) =>
               prev.map((c) =>

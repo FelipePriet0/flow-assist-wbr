@@ -14,6 +14,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
+import { X } from "lucide-react";
+import { ExpandedFichaModal } from "@/components/ficha/ExpandedFichaModal";
+import { ComercialFormValues } from "@/components/NovaFichaComercialForm";
 
 interface ModalEditarFichaProps {
   card: any;
@@ -21,9 +24,10 @@ interface ModalEditarFichaProps {
   onClose: () => void;
   onSave: (updatedCard: any) => void;
   onDesingressar?: (id: string) => void;
+  onRefetch?: () => void;
 }
 
-export default function ModalEditarFicha({ card, onClose, onSave, onDesingressar, responsaveis = [] }: ModalEditarFichaProps) {
+export default function ModalEditarFicha({ card, onClose, onSave, onDesingressar, responsaveis = [], onRefetch }: ModalEditarFichaProps) {
   const [form, setForm] = useState({
     nome: card?.nome ?? "",
     telefone: card?.telefone ?? "",
@@ -32,6 +36,7 @@ export default function ModalEditarFicha({ card, onClose, onSave, onDesingressar
     recebido_em: card?.receivedAt ? new Date(card.receivedAt).toISOString().slice(0, 10) : "",
   });
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [showExpandedModal, setShowExpandedModal] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -44,10 +49,40 @@ export default function ModalEditarFicha({ card, onClose, onSave, onDesingressar
     onSave(form);
   };
 
+  const handleExpandedSubmit = async (data: ComercialFormValues) => {
+    // Handle the full form submission
+    console.log('Full form submitted:', data);
+    setShowExpandedModal(false);
+    onRefetch?.();
+  };
+
+  const basicInfo = {
+    nome: card?.nome || '',
+    cpf: card?.cpf || '',
+    telefone: card?.telefone || '',
+    whatsapp: card?.whatsapp || card?.telefone || '',
+    nascimento: card?.nascimento ? new Date(card.nascimento) : new Date(),
+    naturalidade: card?.naturalidade || '',
+    uf: card?.uf || '',
+    email: card?.email || ''
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background text-foreground p-6 rounded-md shadow-xl w-full max-w-md">
-        <h2 className="text-xl mb-4 font-semibold">Editar Ficha</h2>
+    <>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-background text-foreground p-6 rounded-md shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Editar Ficha</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-8 w-8 p-0"
+              aria-label="Fechar"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
 
         <div className="space-y-4">
           <div className="space-y-2">
@@ -85,18 +120,24 @@ export default function ModalEditarFicha({ card, onClose, onSave, onDesingressar
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-6">
-          <Button variant="secondary" onClick={onClose}>Sair</Button>
-          <div className="flex gap-2">
-            {card?.columnId === "em_analise" && (
-              <Button variant="secondary" onClick={() => { onDesingressar?.(card.id); toast({ title: "Card retornado para Recebidos" }); onClose(); }}>
-                Desingressar
-              </Button>
-            )}
-            <Button onClick={handleSave}>Salvar Alterações</Button>
+          <div className="flex items-center justify-between mt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowExpandedModal(true)}
+            >
+              Analisar
+            </Button>
+            <div className="flex gap-2">
+              {card?.columnId === "em_analise" && (
+                <Button variant="secondary" onClick={() => { onDesingressar?.(card.id); toast({ title: "Card retornado para Recebidos" }); onClose(); }}>
+                  Desingressar
+                </Button>
+              )}
+              <Button onClick={handleSave}>Salvar Alterações</Button>
+            </div>
           </div>
-        </div>
 
+        </div>
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
@@ -111,6 +152,14 @@ export default function ModalEditarFicha({ card, onClose, onSave, onDesingressar
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+
+      <ExpandedFichaModal
+        open={showExpandedModal}
+        onClose={() => setShowExpandedModal(false)}
+        onSubmit={handleExpandedSubmit}
+        basicInfo={basicInfo}
+        applicationId={card?.id}
+      />
+    </>
   );
 }
