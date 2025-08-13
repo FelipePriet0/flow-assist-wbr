@@ -235,6 +235,7 @@ export type Database = {
         Row: {
           analyst_id: string | null
           analyst_name: string | null
+          assigned_reanalyst: string | null
           comments: string | null
           company_id: string | null
           created_at: string | null
@@ -249,6 +250,7 @@ export type Database = {
         Insert: {
           analyst_id?: string | null
           analyst_name?: string | null
+          assigned_reanalyst?: string | null
           comments?: string | null
           company_id?: string | null
           created_at?: string | null
@@ -263,6 +265,7 @@ export type Database = {
         Update: {
           analyst_id?: string | null
           analyst_name?: string | null
+          assigned_reanalyst?: string | null
           comments?: string | null
           company_id?: string | null
           created_at?: string | null
@@ -275,6 +278,13 @@ export type Database = {
           status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "applications_assigned_reanalyst_fkey"
+            columns: ["assigned_reanalyst"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "applications_company_id_fkey"
             columns: ["company_id"]
@@ -825,6 +835,22 @@ export type Database = {
       is_premium: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      pick_reanalyst_for_company: {
+        Args: { p_company: string }
+        Returns: string
+      }
+      reanalyst_workload: {
+        Args: { p_reanalyst: string }
+        Returns: number
+      }
+      reassign_application: {
+        Args: { p_app_id: string; p_reanalyst: string }
+        Returns: undefined
+      }
+      route_application: {
+        Args: { p_app_id: string }
+        Returns: string
       }
       same_company: {
         Args: { target: string }

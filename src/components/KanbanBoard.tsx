@@ -42,9 +42,11 @@ import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calendar as CalendarIcon, UserPlus, Search } from "lucide-react";
+import { Calendar as CalendarIcon, UserPlus, Search, Edit, User } from "lucide-react";
 import ModalEditarFicha from "@/components/ui/ModalEditarFicha";
 import NovaFichaComercialForm, { ComercialFormValues } from "@/components/NovaFichaComercialForm";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useAuth } from "@/context/AuthContext";
@@ -82,6 +84,9 @@ export interface CardItem {
   companyId?: string;
   companyName?: string;
   companyLogoUrl?: string | null;
+  assignedReanalyst?: string;
+  reanalystName?: string;
+  reanalystAvatarUrl?: string;
 }
 
 
@@ -166,12 +171,14 @@ const initialCards: CardItem[] = [
 const RESPONSAVEIS = ["Ana", "Bruno", "Carla", "Diego", "Equipe"];
 
 type PrazoFiltro = "todos" | "hoje" | "atrasados";
+type ViewFilter = "all" | "mine" | "company";
 
 export default function KanbanBoard() {
   const [cards, setCards] = useState<CardItem[]>(initialCards);
   const [query, setQuery] = useState("");
   const [responsavelFiltro, setResponsavelFiltro] = useState<string>("todos");
   const [prazoFiltro, setPrazoFiltro] = useState<PrazoFiltro>("todos");
+  const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
   const [openNew, setOpenNew] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -185,6 +192,7 @@ export default function KanbanBoard() {
     prazo?: Date;
   } | null>(null);
   const [mockCard, setMockCard] = useState<CardItem | null>(null);
+  const [reanalysts, setReanalysts] = useState<Array<{id: string; full_name: string; avatar_url?: string; company_id?: string}>>([]);
 
   const { name: currentUserName } = useCurrentUser();
   const { profile } = useAuth();
@@ -210,17 +218,8 @@ export default function KanbanBoard() {
     const cardId = active.id as string;
     const targetColumn = over.id as ColumnId;
 
-    setCards((prev) =>
-      prev.map((c) =>
-        c.id === cardId
-          ? {
-              ...c,
-              columnId: targetColumn,
-              lastMovedAt: new Date().toISOString(),
-            }
-          : c
-      )
-    );
+    // Use the moveTo function that handles routing
+    moveTo(cardId, targetColumn);
   }
 
   const filteredCards = useMemo(() => {
@@ -243,9 +242,14 @@ export default function KanbanBoard() {
       const matchesPrazo =
         prazoFiltro === "todos" || (prazoFiltro === "hoje" ? isHoje : isAtrasado);
 
-      return matchesQuery && matchesResp && matchesPrazo;
+      // View filter for reanalysts
+      const matchesView = viewFilter === "all" || 
+                         (viewFilter === "mine" && c.assignedReanalyst === profile?.id) ||
+                         (viewFilter === "company" && c.companyId === profile?.company_id);
+
+      return matchesQuery && matchesResp && matchesPrazo && matchesView;
     });
-  }, [cards, query, responsavelFiltro, prazoFiltro]);
+  }, [cards, query, responsavelFiltro, prazoFiltro, viewFilter, profile]);
 
 // New card creation handled by NovaFichaComercialForm component
 // Load applications from Supabase (with company and customer for logos and names)
@@ -264,8 +268,10 @@ useEffect(() => {
           due_at,
           created_at,
           company_id,
+          assigned_reanalyst,
           companies:company_id ( name, logo_url ),
-          customers:customer_id ( full_name, phone )
+          customers:customer_id ( full_name, phone ),
+          reanalyst:assigned_reanalyst ( full_name, avatar_url )
         `)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -293,6 +299,9 @@ useEffect(() => {
           companyId: row.company_id ?? undefined,
           companyName: row.companies?.name ?? undefined,
           companyLogoUrl: row.companies?.logo_url ?? undefined,
+          assignedReanalyst: row.assigned_reanalyst ?? undefined,
+          reanalystName: row.reanalyst?.full_name ?? undefined,
+          reanalystAvatarUrl: row.reanalyst?.avatar_url ?? undefined,
         } as CardItem;
       });
       setCards(mapped);
@@ -301,7 +310,23 @@ useEffect(() => {
       console.error("[Kanban] Falha ao carregar aplicações", e);
     }
   };
+  
+  const loadReanalysts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url, company_id")
+        .eq("role", "reanalista");
+
+      if (error) throw error;
+      setReanalysts(data || []);
+    } catch (error) {
+      console.error("Error loading reanalysts:", error);
+    }
+  };
+
   load();
+  loadReanalysts();
   return () => {
     mounted = false;
   };
@@ -316,10 +341,64 @@ useEffect(() => {
     return () => clearInterval(t);
   }, []);
 
-  // Actions for Em Análise
-  function moveTo(cardId: string, target: ColumnId, label?: string) {
-    setCards((prev) =>
-      prev.map((c) => {
+  // Actions for Em Análise - Enhanced with routing
+  async function moveTo(cardId: string, target: ColumnId, label?: string) {
+    try {
+      const card = cards.find(c => c.id === cardId);
+      if (!card) return;
+
+      // Map frontend ColumnId to backend status values
+      const statusMap: Record<ColumnId, string> = {
+        "recebido": "pendente",
+        "em_analise": "pendente", 
+        "reanalise": "reanalisar",
+        "aprovado": "aprovado",
+        "negado_taxa": "negado",
+        "finalizado": "aprovado"
+      };
+
+      // Call the Supabase RPC to change status (if available)
+      if (supabase.rpc) {
+        const { error } = await supabase.rpc('applications_change_status', {
+          p_app_id: cardId,
+          p_new_status: statusMap[target] || target,
+          p_comment: label || `Movido para ${target}`
+        });
+
+        if (error) {
+          console.error("Error changing status:", error);
+        }
+      }
+
+      // If status is one that requires reanalyst assignment, call routing
+      if (['aprovado', 'negado_taxa', 'reanalise'].includes(target)) {
+        try {
+          const { data: assignedReanalyst, error: routeError } = await supabase.rpc('route_application', {
+            p_app_id: cardId
+          });
+
+          if (routeError) {
+            console.error("Error routing application:", routeError);
+          } else if (assignedReanalyst) {
+            const reanalyst = reanalysts.find(r => r.id === assignedReanalyst);
+            toast({
+              title: "Ficha atribuída",
+              description: `Atribuída para ${reanalyst?.full_name || 'reanalista'}`,
+            });
+          } else {
+            toast({
+              title: "Sem responsável",
+              description: "Nenhum reanalista disponível na empresa",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error("Error calling route_application:", error);
+        }
+      }
+
+      // Update local state
+      setCards(prev => prev.map(c => {
         if (c.id !== cardId) return c;
         const base = {
           ...c,
@@ -329,8 +408,20 @@ useEffect(() => {
         if (!label) return base;
         const cleaned = c.labels.filter((l) => l !== "Aprovado" && l !== "Negado");
         return { ...base, labels: Array.from(new Set([...cleaned, label])) };
-      })
-    );
+      }));
+
+      toast({
+        title: "Status atualizado",
+        description: `Ficha movida para ${target}`,
+      });
+    } catch (error) {
+      console.error("Error moving card:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao mover ficha",
+        variant: "destructive",
+      });
+    }
   }
 
   function setResponsavel(cardId: string, resp: string) {
@@ -404,7 +495,7 @@ useEffect(() => {
           <CardTitle className="text-2xl">Fluxo de Análise – WBR Net</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
@@ -442,6 +533,20 @@ useEffect(() => {
                 </SelectContent>
               </Select>
             </div>
+            {profile?.role === "reanalista" && (
+              <div className="flex items-center gap-2">
+                <Label className="min-w-24">Visualização</Label>
+                <Select value={viewFilter} onValueChange={(v: ViewFilter) => setViewFilter(v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Visualização" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50">
+                    <SelectItem value="all">Todas (empresa)</SelectItem>
+                    <SelectItem value="mine">Minhas tarefas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="mt-4 flex items-center justify-between">
@@ -544,7 +649,17 @@ useEffect(() => {
                     {filteredCards
                       .filter((c) => c.columnId === col.id)
                       .map((card) => (
-                        <KanbanCard key={card.id} card={card} responsaveis={responsaveisOptions} currentUserName={currentUserName} onSetResponsavel={setResponsavel} onMove={moveTo} onOpen={openEdit} onDesingressar={unassignAndReturn} />
+                        <KanbanCard 
+                          key={card.id} 
+                          card={card} 
+                          responsaveis={responsaveisOptions} 
+                          currentUserName={currentUserName} 
+                          onSetResponsavel={setResponsavel} 
+                          onMove={moveTo} 
+                          onOpen={openEdit} 
+                          onDesingressar={unassignAndReturn}
+                          reanalysts={reanalysts}
+                        />
                       ))}
                   </ColumnDropArea>
                 </SortableContext>
@@ -576,6 +691,7 @@ function KanbanCard({
   onMove,
   onOpen,
   onDesingressar,
+  reanalysts,
 }: {
   card: CardItem;
   responsaveis: string[];
@@ -584,6 +700,7 @@ function KanbanCard({
   onMove: (id: string, col: ColumnId, label?: string) => void;
   onOpen: (card: CardItem) => void;
   onDesingressar: (id: string) => void;
+  reanalysts: Array<{id: string; full_name: string; avatar_url?: string; company_id?: string}>;
 }) {
   const { profile } = useAuth();
   const allowDecide = canChangeStatus(profile);
@@ -593,8 +710,35 @@ function KanbanCard({
   const msUntil = new Date(card.deadline).getTime() - Date.now();
   const onFire = fireColumns.has(card.columnId) && msUntil >= 0 && msUntil <= 24 * 60 * 60 * 1000;
 
-const companyName = card.companyName ?? "Empresa";
+  const companyName = card.companyName ?? "Empresa";
+  const companyReanalysts = reanalysts.filter(r => r.company_id === card.companyId);
 
+  const handleReassign = async (reanalystId: string) => {
+    try {
+      const { error } = await supabase.rpc('reassign_application', {
+        p_app_id: card.id,
+        p_reanalyst: reanalystId
+      });
+
+      if (error) throw error;
+
+      const reanalyst = reanalysts.find(r => r.id === reanalystId);
+      toast({
+        title: "Reatribuição realizada",
+        description: `Ficha atribuída para ${reanalyst?.full_name}`,
+      });
+
+      // Trigger reload of data
+      window.location.reload();
+    } catch (error) {
+      console.error("Error reassigning application:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao reatribuir ficha",
+        variant: "destructive",
+      });
+    }
+  };
 
   const displayLabels = premium ? card.labels.filter((l) => l !== "Em Análise") : card.labels;
 
@@ -674,7 +818,28 @@ const companyName = card.companyName ?? "Empresa";
     </TooltipProvider>
     <div className="font-medium">{card.nome}</div>
   </div>
-  {headerBadges}
+  <div className="flex items-center gap-1">
+    {premium && card.assignedReanalyst && companyReanalysts.length > 0 && (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" data-ignore-card-click>
+            <Edit className="h-3 w-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {companyReanalysts.map((reanalyst) => (
+            <DropdownMenuItem
+              key={reanalyst.id}
+              onClick={() => handleReassign(reanalyst.id)}
+            >
+              {reanalyst.full_name}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )}
+    {headerBadges}
+  </div>
 </div>
       <div className="p-3 relative flex flex-col gap-2">
         <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
@@ -695,6 +860,49 @@ const companyName = card.companyName ?? "Empresa";
             {card.responsavel ?? "—"}
           </div>
         </div>
+
+        {/* Reanalyst Assignment Display */}
+        {card.assignedReanalyst && (
+          <div className="flex items-center gap-2 text-sm">
+            <Avatar className="w-5 h-5">
+              <AvatarImage src={card.reanalystAvatarUrl} />
+              <AvatarFallback className="text-[10px]">
+                {card.reanalystName?.charAt(0) || <User className="w-3 h-3" />}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-foreground font-medium">Reanalista: </span>
+            <span className="text-muted-foreground">{card.reanalystName || 'Reanalista'}</span>
+          </div>
+        )}
+
+        {/* No Reanalyst Warning */}
+        {!card.assignedReanalyst && ['aprovado', 'negado_taxa', 'reanalise'].includes(card.columnId) && (
+          <div className="flex items-center gap-2">
+            <Badge variant="destructive" className="text-[10px] px-1 py-0">
+              Sem responsável
+            </Badge>
+            {premium && companyReanalysts.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-5 text-[10px] px-1" data-ignore-card-click>
+                    Atribuir
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {companyReanalysts.map((reanalyst) => (
+                    <DropdownMenuItem
+                      key={reanalyst.id}
+                      onClick={() => handleReassign(reanalyst.id)}
+                    >
+                      {reanalyst.full_name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
           <Badge variant={card.checks.moradia ? "default" : "secondary"}>Moradia</Badge>
           <Badge variant={card.checks.emprego ? "default" : "secondary"}>Emprego</Badge>
