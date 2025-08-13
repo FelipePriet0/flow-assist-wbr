@@ -79,6 +79,7 @@ export interface CardItem {
   lastMovedAt: string; // ISO
   labels: string[];
   companyId?: string;
+  companyBrand?: "wbr" | "mznet";
 }
 
 const COLUMNS: { id: ColumnId; title: string }[] = [
@@ -141,6 +142,7 @@ const initialCards: CardItem[] = [
     updatedAt: new Date().toISOString(),
     lastMovedAt: new Date().toISOString(),
     labels: [],
+    companyBrand: "wbr",
   },
   {
     id: "2",
@@ -421,6 +423,7 @@ export default function KanbanBoard() {
                       updatedAt: now.toISOString(),
                       lastMovedAt: now.toISOString(),
                       companyId: profile?.company_id || undefined,
+                      companyBrand: values.empresa,
                       labels: [],
                     }
                     setCards((prev) => [newCard, ...prev])
@@ -532,13 +535,9 @@ function KanbanCard({
   const msUntil = new Date(card.deadline).getTime() - Date.now();
   const onFire = fireColumns.has(card.columnId) && msUntil >= 0 && msUntil <= 24 * 60 * 60 * 1000;
 
-  const COMPANY_MAP: Record<string, { name: string; src: string }> = {
-    UUID_WBR: { name: "WBR", src: wbrLogo },
-    UUID_MZNET: { name: "Mznet", src: mznetLogo },
-  };
-  const resolvedCompanyId = (card.companyId ?? profile?.company_id) || "";
-  const companyLogo = COMPANY_MAP[resolvedCompanyId]?.src;
-  const companyName = COMPANY_MAP[resolvedCompanyId]?.name ?? "Empresa";
+  const brand = card.companyBrand;
+  const brandLogo = brand === "wbr" ? wbrLogo : brand === "mznet" ? mznetLogo : undefined;
+  const brandName = brand === "wbr" ? "WBR" : brand === "mznet" ? "Mznet" : undefined;
 
   const displayLabels = premium ? card.labels.filter((l) => l !== "Em Análise") : card.labels;
 
@@ -591,7 +590,12 @@ function KanbanCard({
       )}
 
       <div className="p-3 border-b flex items-center justify-between">
-        <div className="font-medium">{card.nome}</div>
+        <div className="flex items-center gap-2 font-medium">
+          {brandLogo && (
+            <img src={brandLogo} alt={`Logo ${brandName}`} width={20} height={20} loading="lazy" />
+          )}
+          <span>{card.nome}</span>
+        </div>
         {headerBadges}
       </div>
       <div className="p-3 relative flex flex-col gap-2">

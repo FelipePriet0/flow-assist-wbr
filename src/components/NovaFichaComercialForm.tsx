@@ -23,6 +23,7 @@ const schema = z.object({
     uf: z.string().optional(),
     email: z.string().email().optional().or(z.literal("").transform(() => undefined)),
   }),
+  empresa: z.enum(["wbr","mznet"]).default("wbr"),
   endereco: z.object({
     end: z.string().optional(),
     n: z.string().optional(),
@@ -139,6 +140,7 @@ export type ComercialFormValues = z.infer<typeof schema>;
 export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmit: (data: ComercialFormValues) => void; onCancel: () => void }) {
   const form = useForm<ComercialFormValues>({ resolver: zodResolver(schema), defaultValues: {
     cliente: { nome: "" },
+    empresa: "wbr",
     relacoes: { temContrato: "Não" },
   }});
 
@@ -188,6 +190,21 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
               <FormItem className="md:col-span-3">
                 <FormLabel>Nome</FormLabel>
                 <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="empresa" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Empresa</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="wbr">WBR</SelectItem>
+                    <SelectItem value="mznet">Mznet</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )} />
