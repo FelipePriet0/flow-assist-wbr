@@ -74,6 +74,7 @@ export type ColumnId =
 export interface CardItem {
   id: string;
   nome: string;
+  cpf?: string;
   receivedAt: string; // ISO
   deadline: string; // ISO
   responsavel?: string;
@@ -96,6 +97,7 @@ export interface CardItem {
   assignedReanalyst?: string;
   reanalystName?: string;
   reanalystAvatarUrl?: string;
+  analystName?: string;
 }
 
 
@@ -1015,51 +1017,11 @@ useEffect(() => {
       <BasicInfoModal
         open={showBasicInfo}
         onClose={() => setShowBasicInfo(false)}
-        onSubmit={async (data) => {
+        onSubmit={async (data, applicationId) => {
           setBasicInfoData(data);
           setShowBasicInfo(false);
-          
-          // Create minimal application first
-          try {
-            const { data: customer, error: customerError } = await supabase
-              .from('customers')
-              .insert({
-                full_name: data.nome,
-                cpf: data.cpf,
-                phone: data.telefone,
-                whatsapp: data.whatsapp || null,
-                birth_date: data.nascimento.toISOString().split('T')[0],
-                birthplace: data.naturalidade,
-                birthplace_uf: data.uf,
-                email: data.email || null,
-              })
-              .select()
-              .single();
-
-            if (customerError) throw customerError;
-
-            const { data: application, error: appError } = await supabase
-              .from('applications')
-              .insert({
-                customer_id: customer.id,
-                status: 'recebido',
-                is_draft: true,
-              })
-              .select()
-              .single();
-
-            if (appError) throw appError;
-
-            setPendingApplicationId(application.id);
-            setShowExpandedForm(true);
-          } catch (error) {
-            console.error('Error creating draft:', error);
-            toast({
-              title: "Erro ao criar ficha",
-              description: "Tente novamente",
-              variant: "destructive",
-            });
-          }
+          setPendingApplicationId(applicationId);
+          setShowExpandedForm(true);
         }}
       />
 

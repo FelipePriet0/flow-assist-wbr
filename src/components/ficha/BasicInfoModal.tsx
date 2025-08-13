@@ -20,9 +20,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const basicInfoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
@@ -40,11 +42,14 @@ export type BasicInfoData = z.infer<typeof basicInfoSchema>;
 interface BasicInfoModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: BasicInfoData) => void;
+  onSubmit: (data: BasicInfoData, applicationId: string) => void;
   initialData?: Partial<BasicInfoData>;
 }
 
 export function BasicInfoModal({ open, onClose, onSubmit, initialData }: BasicInfoModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  
   const form = useForm<BasicInfoData>({
     resolver: zodResolver(basicInfoSchema),
     defaultValues: {
@@ -59,8 +64,36 @@ export function BasicInfoModal({ open, onClose, onSubmit, initialData }: BasicIn
     },
   });
 
-  const handleSubmit = (data: BasicInfoData) => {
-    onSubmit(data);
+  const handleSubmit = async (data: BasicInfoData) => {
+    setIsSubmitting(true);
+    try {
+      // Chamar RPC save_draft
+      const { data: applicationId, error } = await supabase.rpc('save_draft', {
+        draft_data: {
+          customer_data: {
+            ...data,
+            nascimento: data.nascimento.toISOString().split('T')[0] // Convert Date to string
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (applicationId) {
+        onSubmit(data, applicationId);
+      } else {
+        throw new Error('Application ID not returned');
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar os dados. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatCPF = (value: string) => {
@@ -256,11 +289,12 @@ export function BasicInfoModal({ open, onClose, onSubmit, initialData }: BasicIn
             </div>
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit">
-                Continuar
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting ? "Salvando..." : "Continuar"}
               </Button>
             </div>
           </form>

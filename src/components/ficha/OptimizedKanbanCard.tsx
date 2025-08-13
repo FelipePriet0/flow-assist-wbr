@@ -151,7 +151,7 @@ export function OptimizedKanbanCard({
               {card.nome}
             </h4>
             <p className="text-xs text-muted-foreground truncate">
-              CPF: {card.telefone || 'Não informado'}
+              CPF: {card.cpf || 'Não informado'}
             </p>
           </div>
           
@@ -236,15 +236,15 @@ export function OptimizedKanbanCard({
           </div>
         </div>
 
-        {/* Analyst/Reanalyst */}
-        <div className="flex items-center justify-between">
+        {/* Analyst */}
+        {card.analystName && (
           <div className="flex items-center gap-2">
             <User className="h-3 w-3 text-muted-foreground" />
             <span className="text-xs text-muted-foreground truncate">
-              Analista: {card.responsavel || 'Não atribuído'}
+              Analista: {card.analystName}
             </span>
           </div>
-        </div>
+        )}
 
         {/* Reanalyst (if applicable) */}
         {(card.columnId === 'reanalise' || card.assignedReanalyst) && (

@@ -1113,6 +1113,10 @@ export type Database = {
         Args: { target: string }
         Returns: boolean
       }
+      save_draft: {
+        Args: { draft_data: Json }
+        Returns: string
+      }
       update_profile: {
         Args: { p_full_name: string; p_avatar_url: string }
         Returns: {
