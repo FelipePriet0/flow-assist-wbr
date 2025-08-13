@@ -540,7 +540,7 @@ function KanbanCard({
   const companyLogo = COMPANY_MAP[resolvedCompanyId]?.src;
   const companyName = COMPANY_MAP[resolvedCompanyId]?.name ?? "Empresa";
 
-  const displayLabels = card.labels;
+  const displayLabels = overDue ? card.labels.filter((l) => l !== "Em Análise") : card.labels;
 
   const headerBadges = (
     <div className="flex gap-2 flex-wrap">
@@ -592,7 +592,7 @@ function KanbanCard({
 
       <div className="p-3 border-b flex items-center justify-between">
         <div className="font-medium flex items-center gap-2">
-          {premium && companyLogo && (
+          {companyLogo && (
             <img
               src={companyLogo}
               alt={`Logo ${companyName}`}
