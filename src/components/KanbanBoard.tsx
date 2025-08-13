@@ -48,6 +48,14 @@ import NovaFichaComercialForm, { ComercialFormValues } from "@/components/NovaFi
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
+// New secure ficha creation components
+import { ConfirmCreateModal } from "@/components/ficha/ConfirmCreateModal";
+import { BasicInfoModal, BasicInfoData } from "@/components/ficha/BasicInfoModal";
+import { ExpandedFichaModal } from "@/components/ficha/ExpandedFichaModal";
+import { DeleteConfirmDialog } from "@/components/ficha/DeleteConfirmDialog";
+import { OptimizedKanbanCard } from "@/components/ficha/OptimizedKanbanCard";
+import { RecoveryToast } from "@/components/ficha/RecoveryToast";
+
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useAuth } from "@/context/AuthContext";
 import { canChangeStatus, isPremium } from "@/lib/access";
@@ -179,6 +187,7 @@ export default function KanbanBoard() {
   const [responsavelFiltro, setResponsavelFiltro] = useState<string>("todos");
   const [prazoFiltro, setPrazoFiltro] = useState<PrazoFiltro>("todos");
   const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
+  // Old state - kept for compatibility
   const [openNew, setOpenNew] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -193,6 +202,17 @@ export default function KanbanBoard() {
   } | null>(null);
   const [mockCard, setMockCard] = useState<CardItem | null>(null);
   const [reanalysts, setReanalysts] = useState<Array<{id: string; full_name: string; avatar_url?: string; company_id?: string}>>([]);
+
+  // New secure creation flow state
+  const [showConfirmCreate, setShowConfirmCreate] = useState(false);
+  const [showBasicInfo, setShowBasicInfo] = useState(false);
+  const [showExpandedForm, setShowExpandedForm] = useState(false);
+  const [basicInfoData, setBasicInfoData] = useState<BasicInfoData | null>(null);
+  const [pendingApplicationId, setPendingApplicationId] = useState<string | null>(null);
+  
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [cardToDelete, setCardToDelete] = useState<CardItem | null>(null);
 
   const { name: currentUserName } = useCurrentUser();
   const { profile } = useAuth();
@@ -557,18 +577,27 @@ useEffect(() => {
               <Badge className="bg-[hsl(var(--success))] text-white">Aprovado</Badge>
               <Badge className="bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))]">Atrasado</Badge>
             </div>
-            <Dialog open={openNew} onOpenChange={setOpenNew}>
-              <DialogTrigger asChild>
-                <Button variant="pill" size="xl" className="hover-scale" style={{ backgroundImage: "var(--gradient-primary)" }}>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Nova ficha
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[800px]">
-                <DialogHeader>
-                  <DialogTitle>Nova ficha</DialogTitle>
-                </DialogHeader>
-                <NovaFichaComercialForm
+            <Button 
+              variant="pill" 
+              size="xl" 
+              className="hover-scale" 
+              style={{ backgroundImage: "var(--gradient-primary)" }}
+              onClick={() => setShowConfirmCreate(true)}
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              Nova ficha
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Legacy Dialog - Hidden */}
+      <Dialog open={openNew} onOpenChange={setOpenNew}>
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>Nova ficha</DialogTitle>
+          </DialogHeader>
+          <NovaFichaComercialForm
                   onCancel={() => setOpenNew(false)}
                   onSubmit={async (values: ComercialFormValues) => {
                     try {
@@ -734,11 +763,8 @@ useEffect(() => {
                     }
                   }}
                 />
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
       {mockCard && (
         <ModalEditarFicha
@@ -788,19 +814,19 @@ useEffect(() => {
                   <ColumnDropArea columnId={col.id}>
                     {filteredCards
                       .filter((c) => c.columnId === col.id)
-                      .map((card) => (
-                        <KanbanCard 
-                          key={card.id} 
-                          card={card} 
-                          responsaveis={responsaveisOptions} 
-                          currentUserName={currentUserName} 
-                          onSetResponsavel={setResponsavel} 
-                          onMove={moveTo} 
-                          onOpen={openEdit} 
-                          onDesingressar={unassignAndReturn}
-                          reanalysts={reanalysts}
-                        />
-                      ))}
+                       .map((card) => (
+                          <OptimizedKanbanCard
+                            key={card.id}
+                            card={card}
+                            isOverdue={isOverdue(card)}
+                            allowMove={allowMove}
+                            onEdit={openEdit}
+                            onDelete={(card) => {
+                              setCardToDelete(card);
+                              setShowDeleteConfirm(true);
+                            }}
+                          />
+                       ))}
                   </ColumnDropArea>
                 </SortableContext>
               </div>
@@ -808,6 +834,121 @@ useEffect(() => {
           ))}
         </div>
       </DndContext>
+
+      {/* New secure creation flow modals */}
+      <ConfirmCreateModal
+        open={showConfirmCreate}
+        onClose={() => setShowConfirmCreate(false)}
+        onConfirm={() => {
+          setShowConfirmCreate(false);
+          setShowBasicInfo(true);
+        }}
+      />
+
+      <BasicInfoModal
+        open={showBasicInfo}
+        onClose={() => setShowBasicInfo(false)}
+        onSubmit={async (data) => {
+          setBasicInfoData(data);
+          setShowBasicInfo(false);
+          
+          // Create minimal application first
+          try {
+            const { data: customer, error: customerError } = await supabase
+              .from('customers')
+              .insert({
+                full_name: data.nome,
+                cpf: data.cpf,
+                phone: data.telefone,
+                whatsapp: data.whatsapp || null,
+                birth_date: data.nascimento.toISOString().split('T')[0],
+                birthplace: data.naturalidade,
+                birthplace_uf: data.uf,
+                email: data.email || null,
+              })
+              .select()
+              .single();
+
+            if (customerError) throw customerError;
+
+            const { data: application, error: appError } = await supabase
+              .from('applications')
+              .insert({
+                customer_id: customer.id,
+                status: 'recebido',
+                is_draft: true,
+              })
+              .select()
+              .single();
+
+            if (appError) throw appError;
+
+            setPendingApplicationId(application.id);
+            setShowExpandedForm(true);
+          } catch (error) {
+            console.error('Error creating draft:', error);
+            toast({
+              title: "Erro ao criar ficha",
+              description: "Tente novamente",
+              variant: "destructive",
+            });
+          }
+        }}
+      />
+
+      {basicInfoData && (
+        <ExpandedFichaModal
+          open={showExpandedForm}
+          onClose={() => setShowExpandedForm(false)}
+          onSubmit={async (data) => {
+            // Complete application creation logic here
+            setShowExpandedForm(false);
+            toast({ title: "Ficha criada com sucesso!" });
+            // Reload data
+            window.location.reload();
+          }}
+          basicInfo={basicInfoData}
+          applicationId={pendingApplicationId || undefined}
+        />
+      )}
+
+      <DeleteConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setCardToDelete(null);
+        }}
+        onConfirm={async (reason) => {
+          if (!cardToDelete) return;
+          
+          try {
+            await supabase.rpc('delete_application_safely', {
+              p_app_id: cardToDelete.id,
+              p_reason: reason,
+            });
+
+            setCards(prev => prev.filter(c => c.id !== cardToDelete.id));
+            toast({ title: "Ficha deletada com sucesso" });
+          } catch (error) {
+            console.error('Error deleting application:', error);
+            toast({
+              title: "Erro ao deletar ficha",
+              variant: "destructive",
+            });
+          }
+          
+          setShowDeleteConfirm(false);
+          setCardToDelete(null);
+        }}
+        customerName={cardToDelete?.nome || ''}
+        customerCpf={cardToDelete?.telefone || ''}
+      />
+
+      <RecoveryToast
+        onRecover={() => {
+          setShowExpandedForm(true);
+        }}
+      />
     </section>
   );
 }

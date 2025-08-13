@@ -306,6 +306,7 @@ export type Database = {
           customer_id: string
           due_at: string | null
           id: string
+          is_draft: boolean | null
           reanalysis_notes: string | null
           received_at: string | null
           status: string | null
@@ -321,6 +322,7 @@ export type Database = {
           customer_id: string
           due_at?: string | null
           id?: string
+          is_draft?: boolean | null
           reanalysis_notes?: string | null
           received_at?: string | null
           status?: string | null
@@ -336,6 +338,7 @@ export type Database = {
           customer_id?: string
           due_at?: string | null
           id?: string
+          is_draft?: boolean | null
           reanalysis_notes?: string | null
           received_at?: string | null
           status?: string | null
@@ -363,6 +366,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      applications_drafts: {
+        Row: {
+          address_data: Json | null
+          company_id: string | null
+          created_at: string
+          customer_data: Json | null
+          employment_data: Json | null
+          household_data: Json | null
+          id: string
+          other_data: Json | null
+          references_data: Json | null
+          spouse_data: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_data?: Json | null
+          company_id?: string | null
+          created_at?: string
+          customer_data?: Json | null
+          employment_data?: Json | null
+          household_data?: Json | null
+          id?: string
+          other_data?: Json | null
+          references_data?: Json | null
+          spouse_data?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_data?: Json | null
+          company_id?: string | null
+          created_at?: string
+          customer_data?: Json | null
+          employment_data?: Json | null
+          household_data?: Json | null
+          id?: string
+          other_data?: Json | null
+          references_data?: Json | null
+          spouse_data?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       appointments: {
         Row: {
@@ -544,6 +592,42 @@ export type Database = {
           id?: string
           phone?: string | null
           whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      deleted_applications: {
+        Row: {
+          company_id: string | null
+          customer_cpf: string | null
+          customer_name: string | null
+          deleted_at: string
+          deleted_by: string
+          id: string
+          original_application_id: string
+          reason: string | null
+          snapshot: Json
+        }
+        Insert: {
+          company_id?: string | null
+          customer_cpf?: string | null
+          customer_name?: string | null
+          deleted_at?: string
+          deleted_by: string
+          id?: string
+          original_application_id: string
+          reason?: string | null
+          snapshot: Json
+        }
+        Update: {
+          company_id?: string | null
+          customer_cpf?: string | null
+          customer_name?: string | null
+          deleted_at?: string
+          deleted_by?: string
+          id?: string
+          original_application_id?: string
+          reason?: string | null
+          snapshot?: Json
         }
         Relationships: []
       }
@@ -1000,6 +1084,10 @@ export type Database = {
           id: string
           role: Database["public"]["Enums"]["user_role"]
         }
+      }
+      delete_application_safely: {
+        Args: { p_app_id: string; p_reason?: string }
+        Returns: string
       }
       is_premium: {
         Args: Record<PropertyKey, never>
