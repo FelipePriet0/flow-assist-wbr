@@ -14,7 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 const schema = z.object({
   cliente: z.object({
     nome: z.string().min(1, "Obrigatório"),
-    cpf: z.string().optional(),
+    cpf: z.string().min(11, "CPF é obrigatório").max(14, "CPF inválido"),
     nasc: z.string().optional(), // yyyy-mm-dd
     tel: z.string().optional(),
     whats: z.string().optional(),
@@ -136,7 +136,7 @@ const schema = z.object({
 
 export type ComercialFormValues = z.infer<typeof schema>;
 
-export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmit: (data: ComercialFormValues) => void; onCancel: () => void }) {
+export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmit: (data: ComercialFormValues) => Promise<void>; onCancel: () => void }) {
   const form = useForm<ComercialFormValues>({ resolver: zodResolver(schema), defaultValues: {
     cliente: { nome: "" },
     relacoes: { temContrato: "Não" },
@@ -167,14 +167,14 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
     return age < 45;
   }, [nasc]);
 
-  function submit(values: ComercialFormValues) {
+  async function submit(values: ComercialFormValues) {
     // Ensure analysis fields remain blank
     values.infoRelevantes = {
       info: values.infoRelevantes?.info || "",
       infoMk: values.infoRelevantes?.infoMk || "",
       parecerAnalise: "",
     };
-    onSubmit(values);
+    await onSubmit(values);
   }
 
   return (
@@ -211,8 +211,9 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
             )} />
             <FormField control={form.control} name="cliente.cpf" render={({ field }) => (
               <FormItem>
-                <FormLabel>CPF</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormLabel>CPF *</FormLabel>
+                <FormControl><Input {...field} placeholder="000.000.000-00" /></FormControl>
+                <FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="cliente.nasc" render={({ field }) => (

@@ -570,30 +570,168 @@ useEffect(() => {
                 </DialogHeader>
                 <NovaFichaComercialForm
                   onCancel={() => setOpenNew(false)}
-                  onSubmit={(values: ComercialFormValues) => {
-                    const id = Math.random().toString(36).slice(2)
-                    const now = new Date()
-                    const deadline = new Date(Date.now() + 1000 * 60 * 60 * 24)
-                    const newCard: CardItem = {
-                      id,
-                      nome: values.cliente?.nome?.trim() || "Sem nome",
-                      receivedAt: now.toISOString(),
-                      deadline: deadline.toISOString(),
-                      responsavel: undefined,
-                      telefone: values.cliente?.tel || undefined,
-                      score: undefined,
-                      checks: { moradia: false, emprego: false, vinculos: false },
-                      parecer: "",
-                      columnId: "recebido",
-                      createdAt: now.toISOString(),
-                      updatedAt: now.toISOString(),
-                      lastMovedAt: now.toISOString(),
-                      companyId: profile?.company_id || undefined,
-                      labels: [],
+                  onSubmit={async (values: ComercialFormValues) => {
+                    try {
+                      // 1. Criar customer primeiro
+                      const { data: customer, error: customerError } = await supabase
+                        .from('customers')
+                        .insert({
+                          full_name: values.cliente.nome.trim(),
+                          cpf: values.cliente.cpf,
+                          phone: values.cliente.tel || null,
+                          whatsapp: values.cliente.whats || null,
+                          email: values.cliente.email || null,
+                          birth_date: values.cliente.nasc ? new Date(values.cliente.nasc).toISOString().split('T')[0] : null,
+                          birthplace: values.cliente.naturalidade || null,
+                          birthplace_uf: values.cliente.uf || null,
+                        })
+                        .select()
+                        .single();
+
+                      if (customerError) throw customerError;
+
+                      // 2. Criar application
+                      const now = new Date();
+                      const deadline = new Date(Date.now() + 1000 * 60 * 60 * 24);
+                      
+                      const { data: application, error: applicationError } = await supabase
+                        .from('applications')
+                        .insert({
+                          customer_id: customer.id,
+                          company_id: profile?.company_id || null,
+                          created_by: profile?.id || null,
+                          status: 'recebido',
+                          due_at: deadline.toISOString().split('T')[0],
+                          received_at: now.toISOString().split('T')[0],
+                          comments: values.infoRelevantes?.info || null,
+                        })
+                        .select()
+                        .single();
+
+                      if (applicationError) throw applicationError;
+
+                      // 3. Criar dados de endereço
+                      if (values.endereco) {
+                        await supabase.from('application_address').insert({
+                          application_id: application.id,
+                          street: values.endereco.end || null,
+                          number: values.endereco.n || null,
+                          complement: values.endereco.compl || null,
+                          zipcode: values.endereco.cep || null,
+                          neighborhood: values.endereco.bairro || null,
+                          condo: values.endereco.cond || null,
+                          city: null, // Não mapeado no form atual
+                          state: null, // Não mapeado no form atual
+                          housing_type: values.endereco.tipoMoradia || null,
+                          housing_obs: values.endereco.tipoMoradiaObs || null,
+                          household_with: values.relacoes?.comQuemReside || null,
+                          others_relation: values.relacoes?.nasOutras || null,
+                          has_contract: values.relacoes?.temContrato === 'Sim',
+                          sent_contract: values.relacoes?.enviouContrato === 'Sim',
+                          contract_named_to: values.relacoes?.nomeDe || null,
+                          landlord_name: values.relacoes?.nomeLocador || null,
+                          landlord_phone: values.relacoes?.telefoneLocador || null,
+                          sent_proof: values.relacoes?.enviouComprovante === 'Sim',
+                          proof_type: values.relacoes?.tipoComprovante || null,
+                          proof_named_to: values.relacoes?.nomeComprovante || null,
+                          has_fixed_internet: values.relacoes?.temInternetFixa === 'Sim',
+                          fixed_internet_company: values.relacoes?.empresaInternet || null,
+                        });
+                      }
+
+                      // 4. Criar dados de emprego
+                      if (values.empregoRenda) {
+                        await supabase.from('employment').insert({
+                          application_id: application.id,
+                          profession: values.empregoRenda.profissao || null,
+                          company_name: values.empregoRenda.empresa || null,
+                          employment_type: values.empregoRenda.vinculo || null,
+                          employment_obs: values.empregoRenda.vinculoObs || null,
+                          ctps: values.empregoRenda.vinculo === 'Carteira Assinada',
+                        });
+                      }
+
+                      // 5. Criar dados do cônjuge se preenchidos
+                      if (values.conjuge?.nome || values.conjuge?.cpf) {
+                        await supabase.from('spouse').insert({
+                          application_id: application.id,
+                          full_name: values.conjuge.nome || null,
+                          cpf: values.conjuge.cpf || null,
+                          phone: values.conjuge.telefone || null,
+                          whatsapp: values.conjuge.whatsapp || null,
+                          birthplace: values.conjuge.naturalidade || null,
+                          birthplace_uf: values.conjuge.uf || null,
+                        });
+                      }
+
+                      // 6. Criar dados domiciliares
+                      if (values.conjuge?.estadoCivil) {
+                        await supabase.from('household').insert({
+                          application_id: application.id,
+                          marital_status: values.conjuge.estadoCivil,
+                          family_links: true, // Padrão
+                          family_links_obs: null,
+                        });
+                      }
+
+                      // 7. Criar referências pessoais
+                      const references = [];
+                      if (values.referencias?.ref1?.nome) {
+                        references.push({
+                          application_id: application.id,
+                          ref_name: values.referencias.ref1.nome,
+                          relationship: values.referencias.ref1.parentesco || null,
+                          lives_at: values.referencias.ref1.reside || null,
+                          phone: values.referencias.ref1.telefone || null,
+                        });
+                      }
+                      if (values.referencias?.ref2?.nome) {
+                        references.push({
+                          application_id: application.id,
+                          ref_name: values.referencias.ref2.nome,
+                          relationship: values.referencias.ref2.parentesco || null,
+                          lives_at: values.referencias.ref2.reside || null,
+                          phone: values.referencias.ref2.telefone || null,
+                        });
+                      }
+                      if (references.length > 0) {
+                        await supabase.from('references_personal').insert(references);
+                      }
+
+                      // 8. Criar card no estado local
+                      const newCard: CardItem = {
+                        id: application.id,
+                        nome: customer.full_name,
+                        receivedAt: now.toISOString(),
+                        deadline: deadline.toISOString(),
+                        responsavel: undefined,
+                        telefone: customer.phone || undefined,
+                        score: undefined,
+                        checks: { moradia: false, emprego: false, vinculos: false },
+                        parecer: application.comments || "",
+                        columnId: "recebido",
+                        createdAt: application.created_at,
+                        updatedAt: application.created_at,
+                        lastMovedAt: application.created_at,
+                        companyId: application.company_id || undefined,
+                        labels: [],
+                      };
+
+                      setCards((prev) => [newCard, ...prev]);
+                      setOpenNew(false);
+                      toast({ 
+                        title: "Ficha criada com sucesso",
+                        description: `Cliente ${customer.full_name} adicionado ao sistema.`
+                      });
+
+                    } catch (error) {
+                      console.error('Erro ao criar ficha:', error);
+                      toast({ 
+                        title: "Erro ao criar ficha",
+                        description: "Verifique os dados e tente novamente.",
+                        variant: "destructive"
+                      });
                     }
-                    setCards((prev) => [newCard, ...prev])
-                    setOpenNew(false)
-                    toast({ title: "Nova ficha criada" })
                   }}
                 />
               </DialogContent>
