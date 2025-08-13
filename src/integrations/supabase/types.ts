@@ -194,6 +194,69 @@ export type Database = {
           },
         ]
       }
+      application_history: {
+        Row: {
+          application_id: string
+          colaborador_analise_id: string | null
+          colaborador_comercial_id: string | null
+          colaborador_reanalise_id: string | null
+          company_id: string | null
+          customer_cpf: string | null
+          customer_name: string | null
+          decided_at: string
+          decided_by: string | null
+          decision_comment: string | null
+          emprego: string | null
+          id: string
+          obs: string | null
+          ps: string | null
+          reanalysis_notes: string | null
+          snapshot: Json | null
+          status_final: Database["public"]["Enums"]["app_status"]
+          tipo_de_moradia: string | null
+        }
+        Insert: {
+          application_id: string
+          colaborador_analise_id?: string | null
+          colaborador_comercial_id?: string | null
+          colaborador_reanalise_id?: string | null
+          company_id?: string | null
+          customer_cpf?: string | null
+          customer_name?: string | null
+          decided_at?: string
+          decided_by?: string | null
+          decision_comment?: string | null
+          emprego?: string | null
+          id?: string
+          obs?: string | null
+          ps?: string | null
+          reanalysis_notes?: string | null
+          snapshot?: Json | null
+          status_final: Database["public"]["Enums"]["app_status"]
+          tipo_de_moradia?: string | null
+        }
+        Update: {
+          application_id?: string
+          colaborador_analise_id?: string | null
+          colaborador_comercial_id?: string | null
+          colaborador_reanalise_id?: string | null
+          company_id?: string | null
+          customer_cpf?: string | null
+          customer_name?: string | null
+          decided_at?: string
+          decided_by?: string | null
+          decision_comment?: string | null
+          emprego?: string | null
+          id?: string
+          obs?: string | null
+          ps?: string | null
+          reanalysis_notes?: string | null
+          snapshot?: Json | null
+          status_final?: Database["public"]["Enums"]["app_status"]
+          tipo_de_moradia?: string | null
+        }
+        Relationships: []
+      }
       application_labels: {
         Row: {
           application_id: string
@@ -481,6 +544,36 @@ export type Database = {
           id?: string
           phone?: string | null
           whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      delinquencies: {
+        Row: {
+          amount: number | null
+          cpf: string
+          created_at: string | null
+          id: string
+          reference_date: string
+          source: string | null
+          status: string | null
+        }
+        Insert: {
+          amount?: number | null
+          cpf: string
+          created_at?: string | null
+          id?: string
+          reference_date: string
+          source?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount?: number | null
+          cpf?: string
+          created_at?: string | null
+          id?: string
+          reference_date?: string
+          source?: string | null
+          status?: string | null
         }
         Relationships: []
       }
@@ -809,6 +902,82 @@ export type Database = {
           pct_inad_60d: number | null
           pct_inad_90d: number | null
           total_fichas_coorte: number | null
+        }
+        Relationships: []
+      }
+      v_history_with_delinquency: {
+        Row: {
+          analista_name: string | null
+          application_id: string | null
+          colaborador_analise_id: string | null
+          colaborador_comercial_id: string | null
+          colaborador_reanalise_id: string | null
+          comercial_name: string | null
+          company_id: string | null
+          company_logo: string | null
+          company_name: string | null
+          customer_cpf: string | null
+          customer_name: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decided_by_name: string | null
+          id: string | null
+          is_delinquent: boolean | null
+          last_amount: number | null
+          last_reference: string | null
+          reanalista_name: string | null
+          status_final: Database["public"]["Enums"]["app_status"] | null
+        }
+        Relationships: []
+      }
+      view_history_detail: {
+        Row: {
+          analista_name: string | null
+          application_id: string | null
+          colaborador_analise_id: string | null
+          colaborador_comercial_id: string | null
+          colaborador_reanalise_id: string | null
+          comercial_name: string | null
+          company_id: string | null
+          company_logo: string | null
+          company_name: string | null
+          customer_cpf: string | null
+          customer_name: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decided_by_name: string | null
+          decision_comment: string | null
+          emprego: string | null
+          id: string | null
+          obs: string | null
+          ps: string | null
+          reanalista_name: string | null
+          reanalysis_notes: string | null
+          snapshot: Json | null
+          status_final: Database["public"]["Enums"]["app_status"] | null
+          tipo_de_moradia: string | null
+        }
+        Relationships: []
+      }
+      view_history_list: {
+        Row: {
+          analista_name: string | null
+          application_id: string | null
+          colaborador_analise_id: string | null
+          colaborador_comercial_id: string | null
+          colaborador_reanalise_id: string | null
+          comercial_name: string | null
+          company_id: string | null
+          company_logo: string | null
+          company_name: string | null
+          customer_cpf: string | null
+          customer_name: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decided_by_name: string | null
+          id: string | null
+          reanalista_name: string | null
+          status_final: Database["public"]["Enums"]["app_status"] | null
         }
         Relationships: []
       }
