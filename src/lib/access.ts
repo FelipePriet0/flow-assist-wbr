@@ -4,20 +4,16 @@ export function isPremium(profile: Profile | null | undefined) {
   return profile?.role === "analista_premium";
 }
 
-export function isSenior(profile: Profile | null | undefined) {
-  return profile?.role === "analista_senior";
-}
-
 export function canIngressar(profile: Profile | null | undefined) {
-  return isSenior(profile);
+  return isPremium(profile);
 }
 
 export function canChangeStatus(profile: Profile | null | undefined) {
-  return isPremium(profile) || isSenior(profile);
+  return isPremium(profile);
 }
 
 export function canEditReanalysis(profile: Profile | null | undefined) {
-  return profile?.role === "analista_premium" || profile?.role === "analista_senior" || profile?.role === "reanalista";
+  return profile?.role === "analista_premium" || profile?.role === "reanalista";
 }
 
 export function sameCompany(profile: Profile | null | undefined, targetCompanyId?: string | null) {

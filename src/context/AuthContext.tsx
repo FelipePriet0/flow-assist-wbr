@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type Profile = {
   id: string;
   full_name: string | null;
-  role: "analista_premium" | "analista_senior" | "reanalista" | "comercial";
+  role: "analista_premium" | "reanalista" | "comercial";
   company_id: string | null;
 };
 

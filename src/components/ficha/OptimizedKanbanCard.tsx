@@ -38,9 +38,9 @@ interface OptimizedKanbanCardProps {
   onEdit: (card: CardItem) => void;
   onDelete: (card: CardItem) => void;
   onIngressar?: (card: CardItem) => void;
-  onAprovar?: (card: CardItem) => void;
-  onNegar?: (card: CardItem) => void;
-  onReanalisar?: (card: CardItem) => void;
+  onAprovar?: (card: CardItem, parecer: string) => void;
+  onNegar?: (card: CardItem, parecer: string) => void;
+  onReanalisar?: (card: CardItem, parecer: string) => void;
 }
 
 export function OptimizedKanbanCard({ 
@@ -98,25 +98,32 @@ export function OptimizedKanbanCard({
       .slice(0, 2);
   };
 
-  const handleAction = async (action: string, actionFn?: (card: CardItem) => void) => {
-    if (!actionFn) return;
+  const handleIngressarAction = async () => {
+    if (!onIngressar) return;
     
-    setActionLoading(action);
+    setActionLoading("Ingressar");
     try {
-      await actionFn(card);
+      await onIngressar(card);
       toast({
-        title: "Ação executada",
-        description: `${action} realizado com sucesso`,
+        title: "Ficha ingressada",
+        description: "Você agora é responsável por esta análise",
       });
     } catch (error) {
       toast({
         title: "Erro",
-        description: `Erro ao executar ${action}`,
+        description: "Erro ao ingressar na ficha",
         variant: "destructive",
       });
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleDecisionAction = (action: 'aprovar' | 'negar' | 'reanalisar', actionFn?: (card: CardItem, parecer: string) => void) => {
+    if (!actionFn) return;
+    
+    // Para decisões, precisamos do parecer - será tratado no modal do componente pai
+    actionFn(card, card.parecer || '');
   };
 
   const showIngressarButton = card.columnId === "recebido" && canIngressar(profile);
@@ -277,15 +284,15 @@ export function OptimizedKanbanCard({
         {(showIngressarButton || showDecisionButtons || showReanalysisButtons) && (
           <div className="mt-3 pt-3 border-t border-border/50 flex gap-1 flex-wrap">
             {showIngressarButton && (
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => handleAction("Ingressar", onIngressar)}
-                disabled={actionLoading === "Ingressar"}
-                className="h-7 text-xs px-2"
-              >
-                {actionLoading === "Ingressar" ? "..." : "Ingressar"}
-              </Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={handleIngressarAction}
+                  disabled={actionLoading === "Ingressar"}
+                  className="h-7 text-xs px-2"
+                >
+                  {actionLoading === "Ingressar" ? "..." : "Ingressar"}
+                </Button>
             )}
             
             {showDecisionButtons && (
@@ -293,7 +300,7 @@ export function OptimizedKanbanCard({
                 <Button
                   size="sm"
                   variant="default"
-                  onClick={() => handleAction("Aprovar", onAprovar)}
+                  onClick={() => handleDecisionAction("aprovar", onAprovar)}
                   disabled={actionLoading === "Aprovar"}
                   className="h-7 text-xs px-2 bg-green-600 hover:bg-green-700"
                 >
@@ -303,7 +310,7 @@ export function OptimizedKanbanCard({
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => handleAction("Negar", onNegar)}
+                  onClick={() => handleDecisionAction("negar", onNegar)}
                   disabled={actionLoading === "Negar"}
                   className="h-7 text-xs px-2"
                 >
@@ -313,7 +320,7 @@ export function OptimizedKanbanCard({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleAction("Reanalisar", onReanalisar)}
+                  onClick={() => handleDecisionAction("reanalisar", onReanalisar)}
                   disabled={actionLoading === "Reanalisar"}
                   className="h-7 text-xs px-2"
                 >
@@ -328,7 +335,7 @@ export function OptimizedKanbanCard({
                 <Button
                   size="sm"
                   variant="default"
-                  onClick={() => handleAction("Aprovar", onAprovar)}
+                  onClick={() => handleDecisionAction("aprovar", onAprovar)}
                   disabled={actionLoading === "Aprovar"}
                   className="h-7 text-xs px-2 bg-green-600 hover:bg-green-700"
                 >
@@ -338,7 +345,7 @@ export function OptimizedKanbanCard({
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => handleAction("Negar", onNegar)}
+                  onClick={() => handleDecisionAction("negar", onNegar)}
                   disabled={actionLoading === "Negar"}
                   className="h-7 text-xs px-2"
                 >

@@ -55,6 +55,7 @@ import { ExpandedFichaModal } from "@/components/ficha/ExpandedFichaModal";
 import { DeleteConfirmDialog } from "@/components/ficha/DeleteConfirmDialog";
 import { OptimizedKanbanCard } from "@/components/ficha/OptimizedKanbanCard";
 import { RecoveryToast } from "@/components/ficha/RecoveryToast";
+import { ParecerConfirmModal } from "@/components/ficha/ParecerConfirmModal";
 
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useAuth } from "@/context/AuthContext";
@@ -213,6 +214,13 @@ export default function KanbanBoard() {
   // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [cardToDelete, setCardToDelete] = useState<CardItem | null>(null);
+  
+  // Parecer confirmation state
+  const [showParecerConfirm, setShowParecerConfirm] = useState(false);
+  const [parecerAction, setParecerAction] = useState<{
+    action: 'aprovar' | 'negar' | 'reanalisar';
+    card: CardItem;
+  } | null>(null);
 
   const { name: currentUserName } = useCurrentUser();
   const { profile } = useAuth();
@@ -514,21 +522,31 @@ useEffect(() => {
     }
   };
 
-  const handleAprovar = async (card: CardItem) => {
+  const handleAprovar = async (card: CardItem, parecer: string) => {
+    if (!parecer.trim()) {
+      setParecerAction({ action: 'aprovar', card });
+      setShowParecerConfirm(true);
+      return;
+    }
+    
     try {
       const { error } = await supabase.rpc('applications_change_status', {
         p_app_id: card.id,
-        p_new_status: 'aprovado'
+        p_new_status: 'aprovado',
+        p_comment: parecer
       });
 
       if (error) throw error;
       
-      // Reload the page to refresh data
-      window.location.reload();
-      
+      setCards(prev => prev.map(c => 
+        c.id === card.id 
+          ? { ...c, columnId: "aprovado", parecer, lastMovedAt: new Date().toISOString() }
+          : c
+      ));
+
       toast({
-        title: "Sucesso",
-        description: "Ficha aprovada",
+        title: "Ficha aprovada",
+        description: "Decisão registrada com sucesso",
       });
     } catch (error) {
       console.error('Erro ao aprovar:', error);
@@ -540,21 +558,31 @@ useEffect(() => {
     }
   };
 
-  const handleNegar = async (card: CardItem) => {
+  const handleNegar = async (card: CardItem, parecer: string) => {
+    if (!parecer.trim()) {
+      setParecerAction({ action: 'negar', card });
+      setShowParecerConfirm(true);
+      return;
+    }
+    
     try {
       const { error } = await supabase.rpc('applications_change_status', {
         p_app_id: card.id,
-        p_new_status: 'negado'
+        p_new_status: 'negado',
+        p_comment: parecer
       });
 
       if (error) throw error;
       
-      // Reload the page to refresh data
-      window.location.reload();
-      
+      setCards(prev => prev.map(c => 
+        c.id === card.id 
+          ? { ...c, columnId: "negado_taxa", parecer, lastMovedAt: new Date().toISOString() }
+          : c
+      ));
+
       toast({
-        title: "Sucesso",
-        description: "Ficha negada",
+        title: "Ficha negada",
+        description: "Decisão registrada com sucesso",
       });
     } catch (error) {
       console.error('Erro ao negar:', error);
@@ -566,29 +594,62 @@ useEffect(() => {
     }
   };
 
-  const handleReanalisar = async (card: CardItem) => {
+  const handleReanalisar = async (card: CardItem, parecer: string) => {
+    if (!parecer.trim()) {
+      setParecerAction({ action: 'reanalisar', card });
+      setShowParecerConfirm(true);
+      return;
+    }
+    
     try {
       const { error } = await supabase.rpc('applications_change_status', {
         p_app_id: card.id,
-        p_new_status: 'reanalisar'
+        p_new_status: 'reanalisar',
+        p_comment: parecer
       });
 
       if (error) throw error;
       
-      // Reload the page to refresh data
-      window.location.reload();
-      
+      setCards(prev => prev.map(c => 
+        c.id === card.id 
+          ? { ...c, columnId: "reanalise", parecer, lastMovedAt: new Date().toISOString() }
+          : c
+      ));
+
       toast({
-        title: "Sucesso",
-        description: "Ficha enviada para reanálise",
+        title: "Enviado para reanálise",
+        description: "Decisão registrada com sucesso",
       });
     } catch (error) {
-      console.error('Erro ao enviar para reanálise:', error);
+      console.error('Erro ao reanalisar:', error);
       toast({
         title: "Erro",
         description: "Erro ao enviar para reanálise",
         variant: "destructive",
       });
+    }
+  };
+
+  const confirmParecerAction = async () => {
+    if (!parecerAction) return;
+    
+    const { action, card } = parecerAction;
+    const parecer = card.parecer;
+    
+    setShowParecerConfirm(false);
+    setParecerAction(null);
+    
+    // Executar a ação confirmada
+    switch (action) {
+      case 'aprovar':
+        await handleAprovar(card, parecer);
+        break;
+      case 'negar':
+        await handleNegar(card, parecer);
+        break;
+      case 'reanalisar':
+        await handleReanalisar(card, parecer);
+        break;
     }
   };
 
@@ -1060,6 +1121,18 @@ useEffect(() => {
         onRecover={() => {
           setShowExpandedForm(true);
         }}
+      />
+
+      <ParecerConfirmModal
+        isOpen={showParecerConfirm}
+        onClose={() => {
+          setShowParecerConfirm(false);
+          setParecerAction(null);
+        }}
+        onConfirm={confirmParecerAction}
+        action={parecerAction?.action || 'aprovar'}
+        customerName={parecerAction?.card.nome || ''}
+        parecer={parecerAction?.card.parecer}
       />
     </section>
   );
