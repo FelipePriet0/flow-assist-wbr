@@ -531,6 +531,7 @@ function KanbanCard({
   const fireColumns = new Set<ColumnId>(["recebido", "em_analise", "reanalise", "aprovado"]);
   const msUntil = new Date(card.deadline).getTime() - Date.now();
   const onFire = fireColumns.has(card.columnId) && msUntil >= 0 && msUntil <= 24 * 60 * 60 * 1000;
+  const prazoAtrasado = new Date(card.deadline) < new Date();
 
   const COMPANY_MAP: Record<string, { name: string; src: string }> = {
     "38f31fb4-e7bc-44d8-9aaf-85ecaf69f514": { name: "WBR Net", src: wbrLogo },
@@ -540,7 +541,7 @@ function KanbanCard({
   const companyLogo = COMPANY_MAP[resolvedCompanyId]?.src;
   const companyName = COMPANY_MAP[resolvedCompanyId]?.name ?? "Empresa";
 
-  const displayLabels = overDue && card.columnId === "em_analise" ? card.labels.filter((l) => l !== "Em Análise") : card.labels;
+  const displayLabels = card.columnId === "em_analise" && prazoAtrasado ? card.labels.filter((l) => l !== "Em Análise") : card.labels;
 
   const headerBadges = (
     <div className="flex gap-2 flex-wrap">
