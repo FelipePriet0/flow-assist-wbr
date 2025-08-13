@@ -22,6 +22,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+export interface Parecer {
+  id: string;
+  author_id: string;
+  author_name: string;
+  author_role: string;
+  created_at: string;
+  text: string;
+}
+
 interface ExpandedFichaModalProps {
   open: boolean;
   onClose: () => void;
@@ -39,7 +48,11 @@ export function ExpandedFichaModal({
 }: ExpandedFichaModalProps) {
   const { isAutoSaving, lastSaved, saveDraft, clearEditingSession } = useDraftPersistence();
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
+  const [showDeleteParecerDialog, setShowDeleteParecerDialog] = useState(false);
+  const [parecerToDelete, setParecerToDelete] = useState<string | null>(null);
+  const [formData, setFormData] = useState<ComercialFormValues | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
   // Auto-save status component
   const SaveStatus = () => {
@@ -65,6 +78,9 @@ export function ExpandedFichaModal({
   };
 
   const handleFormChange = (formData: any) => {
+    setFormData(formData);
+    setHasChanges(true);
+    
     // Clear existing timer
     if (autoSaveTimer) {
       clearTimeout(autoSaveTimer);
@@ -99,27 +115,55 @@ export function ExpandedFichaModal({
     setAutoSaveTimer(timer);
   };
 
-  const handleCancel = () => {
-    setShowCancelDialog(true);
+  const handleClose = () => {
+    if (!hasChanges) {
+      onClose();
+      return;
+    }
+    setShowSaveConfirmDialog(true);
   };
 
-  const handleCancelConfirm = async (keepDraft: boolean) => {
-    if (!keepDraft) {
-      // Clear the editing session and draft
+  const handleSaveConfirm = async () => {
+    if (formData) {
+      await onSubmit(formData);
       await clearEditingSession();
-      // Note: We're not deleting the draft as it might be valuable for recovery
-    } else {
-      // Just clear the editing session but keep the draft
-      await clearEditingSession();
+      setShowSaveConfirmDialog(false);
+      onClose();
     }
-    setShowCancelDialog(false);
+  };
+
+  const handleDiscardChanges = async () => {
+    await clearEditingSession();
+    setShowSaveConfirmDialog(false);
     onClose();
   };
 
   const handleSubmitWrapper = async (data: ComercialFormValues) => {
-    await onSubmit(data);
-    // Clear editing session after successful submission
-    await clearEditingSession();
+    if (applicationId) {
+      // Show double confirmation for editing existing ficha
+      setFormData(data);
+      setShowSaveConfirmDialog(true);
+    } else {
+      // Direct submit for new ficha
+      await onSubmit(data);
+      await clearEditingSession();
+    }
+  };
+
+  const handleDeleteParecer = (parecerId: string) => {
+    setParecerToDelete(parecerId);
+    setShowDeleteParecerDialog(true);
+  };
+
+  const confirmDeleteParecer = () => {
+    if (parecerToDelete && formData) {
+      // Remove parecer from form data and trigger form change
+      const updatedFormData = { ...formData };
+      // This will be handled by the NovaFichaComercialForm component
+      setHasChanges(true);
+    }
+    setShowDeleteParecerDialog(false);
+    setParecerToDelete(null);
   };
 
   useEffect(() => {
@@ -215,7 +259,7 @@ export function ExpandedFichaModal({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={() => handleCancel()}>
+      <Dialog open={open} onOpenChange={() => handleClose()}>
         <DialogContent 
           className="max-w-[1200px] max-h-[95vh] overflow-hidden"
           onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click
@@ -230,8 +274,9 @@ export function ExpandedFichaModal({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleCancel}
+                  onClick={handleClose}
                   className="h-8 w-8 p-0"
+                  aria-label="Fechar"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -242,37 +287,66 @@ export function ExpandedFichaModal({
           <div className="flex-1 overflow-hidden">
             <NovaFichaComercialForm
               onSubmit={handleSubmitWrapper}
-              onCancel={handleCancel}
               initialValues={transformedFormData}
               onFormChange={handleFormChange}
+              applicationId={applicationId}
+              onDeleteParecer={handleDeleteParecer}
             />
           </div>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+      {/* Smart save confirmation dialog */}
+      <AlertDialog open={showSaveConfirmDialog} onOpenChange={setShowSaveConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar edição da ficha?</AlertDialogTitle>
+            <AlertDialogTitle>Você deseja alterar as informações dessa ficha?</AlertDialogTitle>
             <AlertDialogDescription>
-              Você tem alterações não finalizadas. O que deseja fazer?
+              As alterações serão aplicadas permanentemente à ficha.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowCancelDialog(false)}>
-              Continuar editando
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => handleCancelConfirm(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Manter rascunho
-            </AlertDialogAction>
-            <AlertDialogAction 
-              onClick={() => handleCancelConfirm(false)}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-            >
+            <AlertDialogCancel onClick={handleDiscardChanges}>
               Descartar alterações
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowSaveConfirmDialog(false);
+              // Show second confirmation
+              setTimeout(() => {
+                if (window.confirm("Tem certeza que deseja alterar as informações?")) {
+                  handleSaveConfirm();
+                }
+              }, 100);
+            }}>
+              Sim, alterar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete parecer confirmation dialog */}
+      <AlertDialog open={showDeleteParecerDialog} onOpenChange={setShowDeleteParecerDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você deseja apagar este parecer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDeleteParecerDialog(false)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowDeleteParecerDialog(false);
+              // Show second confirmation
+              setTimeout(() => {
+                if (window.confirm("Tem certeza que deseja apagar este parecer?")) {
+                  confirmDeleteParecer();
+                }
+              }, 100);
+            }} className="bg-destructive hover:bg-destructive/90">
+              Sim, apagar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

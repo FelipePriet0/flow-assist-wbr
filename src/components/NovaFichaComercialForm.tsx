@@ -9,6 +9,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Trash2, Plus } from "lucide-react";
+import { useCurrentUser } from "@/hooks/use-current-user";
+
+interface Parecer {
+  id: string;
+  author_id: string;
+  author_name: string;
+  author_role: string;
+  created_at: string;
+  text: string;
+}
 
 // Schema
 const schema = z.object({
@@ -138,12 +149,17 @@ export type ComercialFormValues = z.infer<typeof schema>;
 
 interface NovaFichaComercialFormProps {
   onSubmit: (data: ComercialFormValues) => Promise<void>;
-  onCancel: () => void;
+  onCancel?: () => void;
   initialValues?: Partial<ComercialFormValues>;
   onFormChange?: (data: ComercialFormValues) => void;
+  applicationId?: string;
+  onDeleteParecer?: (parecerId: string) => void;
 }
 
-export default function NovaFichaComercialForm({ onSubmit, onCancel, initialValues, onFormChange }: NovaFichaComercialFormProps) {
+export default function NovaFichaComercialForm({ onSubmit, onCancel, initialValues, onFormChange, applicationId, onDeleteParecer }: NovaFichaComercialFormProps) {
+  const { name: currentUserName } = useCurrentUser();
+  const [pareceres, setPareceres] = React.useState<Parecer[]>([]);
+  
   const defaultValues: Partial<ComercialFormValues> = {
     cliente: { nome: "" },
     relacoes: { temContrato: "Não" },
@@ -154,6 +170,77 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel, initialValu
     resolver: zodResolver(schema), 
     defaultValues,
   });
+
+  // Initialize pareceres from existing data
+  React.useEffect(() => {
+    const existingParecer = initialValues?.infoRelevantes?.parecerAnalise;
+    if (existingParecer && existingParecer.trim()) {
+      try {
+        // Try to parse as JSON array
+        const parsed = JSON.parse(existingParecer);
+        if (Array.isArray(parsed)) {
+          setPareceres(parsed);
+        } else {
+          // Convert old string format to new format
+          setPareceres([{
+            id: crypto.randomUUID(),
+            author_id: 'legacy',
+            author_name: 'Sistema',
+            author_role: 'analista',
+            created_at: new Date().toISOString(),
+            text: existingParecer
+          }]);
+        }
+      } catch {
+        // Convert old string format to new format
+        setPareceres([{
+          id: crypto.randomUUID(),
+          author_id: 'legacy',
+          author_name: 'Sistema',
+          author_role: 'analista',
+          created_at: new Date().toISOString(),
+          text: existingParecer
+        }]);
+      }
+    }
+  }, [initialValues?.infoRelevantes?.parecerAnalise]);
+
+  // Sync pareceres with form
+  React.useEffect(() => {
+    const serialized = JSON.stringify(pareceres);
+    form.setValue('infoRelevantes.parecerAnalise', serialized, { shouldValidate: false });
+  }, [pareceres, form]);
+
+  const addNovoParecer = () => {
+    const newParecer: Parecer = {
+      id: crypto.randomUUID(),
+      author_id: 'current-user-id', // In real app, get from auth
+      author_name: currentUserName,
+      author_role: 'analista', // In real app, get from user profile
+      created_at: new Date().toISOString(),
+      text: ''
+    };
+    setPareceres(prev => [...prev, newParecer]);
+  };
+
+  const updateParecerText = (id: string, text: string) => {
+    setPareceres(prev => prev.map(p => p.id === id ? { ...p, text } : p));
+  };
+
+  const deleteParecer = (id: string) => {
+    if (onDeleteParecer) {
+      onDeleteParecer(id);
+    }
+    setPareceres(prev => prev.filter(p => p.id !== id));
+  };
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
 
   // Side effects for contract logic
   const temContrato = form.watch("relacoes.temContrato");
@@ -827,17 +914,64 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel, initialValu
               </FormItem>
             )} />
           </div>
-          <FormField control={form.control} name="infoRelevantes.parecerAnalise" render={({ field }) => (
-            <FormItem className="mt-3">
-              <FormLabel>Parecer da Análise</FormLabel>
-              <FormControl><Textarea rows={3} {...field} placeholder="Deixar em branco" /></FormControl>
-            </FormItem>
-          )} />
+          
+          {/* Pareceres Section */}
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <FormLabel className="text-base font-medium">Pareceres da Análise</FormLabel>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addNovoParecer}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Novo Parecer
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              {pareceres.map((parecer) => (
+                <div key={parecer.id} className="border rounded-lg p-4 relative">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm text-muted-foreground">
+                      {parecer.author_name} · {parecer.author_role} · {formatDateTime(parecer.created_at)}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteParecer(parecer.id)}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      aria-label="Apagar parecer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={parecer.text}
+                    onChange={(e) => updateParecerText(parecer.id, e.target.value)}
+                    placeholder="Escreva seu parecer..."
+                    rows={3}
+                    className="w-full"
+                  />
+                </div>
+              ))}
+              
+              {pareceres.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                  Nenhum parecer adicionado. Clique em "Novo Parecer" para começar.
+                </div>
+              )}
+            </div>
+          </div>
         </section>
 
-        <div className="flex justify-between pt-2">
-          <Button type="button" variant="secondary" onClick={onCancel}>Cancelar</Button>
-          <Button type="submit">Criar ficha</Button>
+        <div className="flex justify-end pt-6">
+          <Button type="submit">
+            {applicationId ? 'Salvar alterações' : 'Criar ficha'}
+          </Button>
         </div>
       </form>
     </Form>
