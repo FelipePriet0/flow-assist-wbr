@@ -126,7 +126,7 @@ export function OptimizedKanbanCard({
     actionFn(card, card.parecer || '');
   };
 
-  const showIngressarButton = card.columnId === "recebido" && canIngressar(profile);
+  const showIngressarButton = card.columnId === "recebidos" && canIngressar(profile);
   const showDecisionButtons = card.columnId === "em_analise" && canChangeStatus(profile);
   const showReanalysisButtons = card.columnId === "reanalise" && canChangeStatus(profile);
 

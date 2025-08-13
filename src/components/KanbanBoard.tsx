@@ -61,10 +61,13 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { useAuth } from "@/context/AuthContext";
 import { canChangeStatus, isPremium } from "@/lib/access";
 import { supabase } from "@/integrations/supabase/client";
+import { useMockMode } from "@/hooks/useMockMode";
+import { KanbanApi } from "@/services/kanbanApi";
+import { GenerateMockButton } from "@/components/GenerateMockButton";
 
 // Types
 export type ColumnId =
-  | "recebido"
+  | "recebidos"
   | "em_analise"
   | "reanalise"
   | "aprovado"
@@ -74,20 +77,26 @@ export type ColumnId =
 export interface CardItem {
   id: string;
   nome: string;
-  receivedAt: string; // ISO
-  deadline: string; // ISO
+  receivedAt?: string; // ISO
+  deadline?: string; // ISO
   responsavel?: string;
   telefone?: string;
+  cpf?: string; // Added for mock compatibility
+  agendamento?: string; // Added for mock compatibility
+  comercial?: string; // Added for mock compatibility
+  empresa?: string; // Added for mock compatibility
+  analista?: string; // Added for mock compatibility
+  reanalista?: string; // Added for mock compatibility
   score?: number;
-  checks: {
+  checks?: {
     moradia: boolean;
     emprego: boolean;
     vinculos: boolean;
   };
   parecer: string;
   columnId: ColumnId;
-  createdAt: string; // ISO
-  updatedAt: string; // ISO
+  createdAt?: string; // ISO
+  updatedAt?: string; // ISO
   lastMovedAt: string; // ISO
   labels: string[];
   companyId?: string;
@@ -100,7 +109,7 @@ export interface CardItem {
 
 
 const COLUMNS: { id: ColumnId; title: string }[] = [
-  { id: "recebido", title: "Recebido" },
+  { id: "recebidos", title: "Recebidos" },
   { id: "em_analise", title: "Em Análise" },
   { id: "reanalise", title: "Reanálise" },
   { id: "aprovado", title: "Aprovado" },
@@ -134,7 +143,7 @@ function businessHoursBetween(startISO: string, endISO: string) {
 function isOverdue(card: CardItem): boolean {
   const now = new Date();
   const nowISO = now.toISOString();
-  if (card.columnId === "recebido" || card.columnId === "em_analise") {
+  if (card.columnId === "recebidos" || card.columnId === "em_analise") {
     return businessHoursBetween(card.lastMovedAt || card.createdAt, nowISO) > 24;
   }
   if (card.columnId === "reanalise") {
@@ -154,7 +163,7 @@ const initialCards: CardItem[] = [
     score: 720,
     checks: { moradia: true, emprego: true, vinculos: false },
     parecer: "",
-    columnId: "recebido",
+    columnId: "recebidos",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     lastMovedAt: new Date().toISOString(),
@@ -224,7 +233,9 @@ export default function KanbanBoard() {
 
   const { name: currentUserName } = useCurrentUser();
   const { profile } = useAuth();
+  const { isMockMode } = useMockMode();
   const allowMove = canChangeStatus(profile);
+  const kanbanApi = new KanbanApi(isMockMode);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -279,12 +290,20 @@ export default function KanbanBoard() {
     });
   }, [cards, query, responsavelFiltro, prazoFiltro, viewFilter, profile]);
 
-// New card creation handled by NovaFichaComercialForm component
-// Load applications from Supabase (with company and customer for logos and names)
+// Load applications from Supabase or Mock Store
 useEffect(() => {
   let mounted = true;
   const load = async () => {
     try {
+      if (isMockMode) {
+        // Use mock data
+        const mockCards = kanbanApi.fetchApplications();
+        if (mounted) {
+          setCards(await mockCards);
+        }
+        return;
+      }
+
       const { data, error } = await supabase
         .from("applications")
         .select(`
@@ -308,7 +327,7 @@ useEffect(() => {
         const createdAt = row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString();
         const receivedAt = row.received_at ? new Date(row.received_at).toISOString() : createdAt;
         const deadline = row.due_at ? new Date(row.due_at).toISOString() : createdAt;
-        const col = (row.status as ColumnId) ?? "recebido";
+        const col = (row.status as ColumnId) ?? "recebidos";
         return {
           id: row.id,
           nome: row.customers?.full_name ?? "Cliente",
@@ -340,6 +359,8 @@ useEffect(() => {
   };
   
   const loadReanalysts = async () => {
+    if (isMockMode) return; // Skip loading reanalysts in mock mode
+    
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -358,7 +379,7 @@ useEffect(() => {
   return () => {
     mounted = false;
   };
-}, [profile?.id]);
+}, [profile?.id, isMockMode]);
 
   // Auto-alert re-render timer
   useEffect(() => {
@@ -377,7 +398,7 @@ useEffect(() => {
 
       // Map frontend ColumnId to backend status values with proper typing
       const statusMap: Record<ColumnId, "aprovado" | "pendente" | "reanalisar" | "negado"> = {
-        "recebido": "pendente",
+        "recebidos": "pendente",
         "em_analise": "pendente", 
         "reanalise": "reanalisar",
         "aprovado": "aprovado",
@@ -460,7 +481,7 @@ useEffect(() => {
         if (c.id !== cardId) return c;
         const nextLabels = new Set(c.labels);
         if (resp) nextLabels.add("Em Análise");
-        const isInRecebido = c.columnId === "recebido";
+        const isInRecebido = c.columnId === "recebidos";
         return {
           ...c,
           responsavel: resp,
@@ -480,7 +501,7 @@ useEffect(() => {
         return {
           ...c,
           responsavel: undefined,
-          columnId: "recebido",
+          columnId: "recebidos",
           labels: c.labels.filter((l) => l !== "Em Análise"),
           lastMovedAt: new Date().toISOString(),
         };
@@ -529,15 +550,9 @@ useEffect(() => {
       setShowParecerConfirm(true);
       return;
     }
-    
-    try {
-      const { error } = await supabase.rpc('applications_change_status', {
-        p_app_id: card.id,
-        p_new_status: 'aprovado',
-        p_comment: parecer
-      });
 
-      if (error) throw error;
+    try {
+      await kanbanApi.changeStatus(card.id, 'aprovado', parecer);
       
       // Reload page to get fresh data
       window.location.reload();
@@ -563,15 +578,9 @@ useEffect(() => {
       setShowParecerConfirm(true);
       return;
     }
-    
-    try {
-      const { error } = await supabase.rpc('applications_change_status', {
-        p_app_id: card.id,
-        p_new_status: 'negado',
-        p_comment: parecer
-      });
 
-      if (error) throw error;
+    try {
+      await kanbanApi.changeStatus(card.id, 'negado', parecer);
       
       // Reload page to get fresh data
       window.location.reload();
@@ -597,15 +606,9 @@ useEffect(() => {
       setShowParecerConfirm(true);
       return;
     }
-    
-    try {
-      const { error } = await supabase.rpc('applications_change_status', {
-        p_app_id: card.id,
-        p_new_status: 'reanalisar',
-        p_comment: parecer
-      });
 
-      if (error) throw error;
+    try {
+      await kanbanApi.changeStatus(card.id, 'reanalisar', parecer);
       
       // Reload page to get fresh data
       window.location.reload();
@@ -792,7 +795,7 @@ useEffect(() => {
                           customer_id: customer.id,
                           company_id: profile?.company_id || null,
                           created_by: profile?.id || null,
-                          status: 'recebido',
+                          status: 'recebidos',
                           due_at: deadline.toISOString().split('T')[0],
                           received_at: now.toISOString().split('T')[0],
                           comments: values.infoRelevantes?.info || null,
@@ -901,7 +904,7 @@ useEffect(() => {
                         score: undefined,
                         checks: { moradia: false, emprego: false, vinculos: false },
                         parecer: application.comments || "",
-                        columnId: "recebido",
+                        columnId: "recebidos",
                         createdAt: application.created_at,
                         updatedAt: application.created_at,
                         lastMovedAt: application.created_at,
@@ -945,7 +948,7 @@ useEffect(() => {
                       telefone: form.telefone || undefined,
                       responsavel: form.responsavel || undefined,
                       deadline: form.agendamento ? new Date(form.agendamento).toISOString() : c.deadline,
-                      receivedAt: c.columnId === "recebido" ? c.receivedAt : (form.recebido_em ? new Date(form.recebido_em).toISOString() : c.receivedAt),
+                      receivedAt: c.columnId === "recebidos" ? c.receivedAt : (form.recebido_em ? new Date(form.recebido_em).toISOString() : c.receivedAt),
                       updatedAt: new Date().toISOString(),
                     }
                   : c
@@ -1042,7 +1045,7 @@ useEffect(() => {
               .from('applications')
               .insert({
                 customer_id: customer.id,
-                status: 'recebido',
+                status: 'recebidos',
                 is_draft: true,
               })
               .select()
@@ -1166,7 +1169,7 @@ function KanbanCard({
   const allowDecide = canChangeStatus(profile);
   const premium = isPremium(profile);
   const overDue = isOverdue(card);
-  const fireColumns = new Set<ColumnId>(["recebido", "em_analise", "reanalise", "aprovado"]);
+  const fireColumns = new Set<ColumnId>(["recebidos", "em_analise", "reanalise", "aprovado"]);
   const msUntil = new Date(card.deadline).getTime() - Date.now();
   const onFire = fireColumns.has(card.columnId) && msUntil >= 0 && msUntil <= 24 * 60 * 60 * 1000;
 
@@ -1403,7 +1406,7 @@ function KanbanCard({
             </div>
           </>
         )}
-        {card.columnId === "recebido" && (
+        {card.columnId === "recebidos" && (
           <div className="sticky bottom-0 -mx-3 px-3 pt-2 border-t bg-gradient-to-t from-background/90 to-background/0">
             <div className="flex gap-2">
               <Button
