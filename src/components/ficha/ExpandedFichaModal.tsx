@@ -48,13 +48,11 @@ export function ExpandedFichaModal({
 }: ExpandedFichaModalProps) {
   const { isAutoSaving, lastSaved, saveDraft, clearEditingSession } = useDraftPersistence();
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
-  const [showFirstConfirmDialog, setShowFirstConfirmDialog] = useState(false);
-  const [showSecondConfirmDialog, setShowSecondConfirmDialog] = useState(false);
+  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
   const [showDeleteParecerDialog, setShowDeleteParecerDialog] = useState(false);
   const [parecerToDelete, setParecerToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState<ComercialFormValues | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'close' | 'save' | null>(null);
 
   // Auto-save status component
   const SaveStatus = () => {
@@ -122,44 +120,29 @@ export function ExpandedFichaModal({
       onClose();
       return;
     }
-    setPendingAction('close');
-    setShowFirstConfirmDialog(true);
+    setShowSaveConfirmDialog(true);
   };
 
-  const handleFirstConfirm = () => {
-    setShowFirstConfirmDialog(false);
-    setShowSecondConfirmDialog(true);
-  };
-
-  const handleSecondConfirm = async () => {
-    setShowSecondConfirmDialog(false);
-    
-    if (pendingAction === 'close' && formData) {
+  const handleSaveConfirm = async () => {
+    if (formData) {
       await onSubmit(formData);
       await clearEditingSession();
-      onClose();
-    } else if (pendingAction === 'save' && formData) {
-      await onSubmit(formData);
-      await clearEditingSession();
+      setShowSaveConfirmDialog(false);
       onClose();
     }
-    
-    setPendingAction(null);
   };
 
-  const handleCancel = () => {
-    setShowFirstConfirmDialog(false);
-    setShowSecondConfirmDialog(false);
-    setPendingAction(null);
+  const handleDiscardChanges = async () => {
+    await clearEditingSession();
+    setShowSaveConfirmDialog(false);
+    onClose();
   };
 
   const handleSubmitWrapper = async (data: ComercialFormValues) => {
-    setFormData(data);
-    
     if (applicationId) {
       // Show double confirmation for editing existing ficha
-      setPendingAction('save');
-      setShowFirstConfirmDialog(true);
+      setFormData(data);
+      setShowSaveConfirmDialog(true);
     } else {
       // Direct submit for new ficha
       await onSubmit(data);
@@ -313,8 +296,8 @@ export function ExpandedFichaModal({
         </DialogContent>
       </Dialog>
 
-      {/* First confirmation dialog */}
-      <AlertDialog open={showFirstConfirmDialog} onOpenChange={(open) => !open && handleCancel()}>
+      {/* Smart save confirmation dialog */}
+      <AlertDialog open={showSaveConfirmDialog} onOpenChange={setShowSaveConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Você deseja alterar as informações dessa ficha?</AlertDialogTitle>
@@ -323,25 +306,19 @@ export function ExpandedFichaModal({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={handleFirstConfirm}>
+            <AlertDialogCancel onClick={handleDiscardChanges}>
+              Descartar alterações
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowSaveConfirmDialog(false);
+              // Show second confirmation
+              setTimeout(() => {
+                if (window.confirm("Tem certeza que deseja alterar as informações?")) {
+                  handleSaveConfirm();
+                }
+              }, 100);
+            }}>
               Sim, alterar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Second confirmation dialog */}
-      <AlertDialog open={showSecondConfirmDialog} onOpenChange={(open) => !open && handleCancel()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Tem certeza que deseja alterar as informações?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleSecondConfirm}>
-              Confirmar alteração
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
