@@ -60,6 +60,7 @@ import { ParecerConfirmModal } from "@/components/ficha/ParecerConfirmModal";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useAuth } from "@/context/AuthContext";
 import { canChangeStatus, isPremium } from "@/lib/access";
+import { useDraftPersistence } from "@/hooks/useDraftPersistence";
 import { supabase } from "@/integrations/supabase/client";
 
 // Types
@@ -223,9 +224,11 @@ export default function KanbanBoard() {
     action: 'aprovar' | 'negar' | 'reanalisar';
     card: CardItem;
   } | null>(null);
+  const [resumeSessionChecked, setResumeSessionChecked] = useState(false);
 
   const { name: currentUserName } = useCurrentUser();
   const { profile } = useAuth();
+  const { checkForExistingSession } = useDraftPersistence();
   const allowMove = canChangeStatus(profile);
 
   const sensors = useSensors(
@@ -300,7 +303,7 @@ useEffect(() => {
           company_id,
           assigned_reanalyst,
           companies:company_id ( name, logo_url ),
-          customers:customer_id ( full_name, phone ),
+          customers:customer_id ( full_name, phone, cpf ),
           reanalyst:assigned_reanalyst ( full_name, avatar_url )
         `)
         .order("created_at", { ascending: false });
@@ -314,6 +317,7 @@ useEffect(() => {
         return {
           id: row.id,
           nome: row.customers?.full_name ?? "Cliente",
+          cpf: row.customers?.cpf ?? "",
           receivedAt,
           deadline,
           responsavel: row.analyst_name ?? undefined,
@@ -332,6 +336,7 @@ useEffect(() => {
           assignedReanalyst: row.assigned_reanalyst ?? undefined,
           reanalystName: row.reanalyst?.full_name ?? undefined,
           reanalystAvatarUrl: row.reanalyst?.avatar_url ?? undefined,
+          analystName: row.analyst_name ?? undefined,
         } as CardItem;
       });
       setCards(mapped);
@@ -355,12 +360,109 @@ useEffect(() => {
     }
   };
 
+  // Check for resume session after profile is loaded
+  const checkResumeSession = async () => {
+    if (!profile?.id || resumeSessionChecked) return;
+    
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('current_edit_application_id')
+        .eq('id', profile.id)
+        .single();
+
+      if (profileData?.current_edit_application_id) {
+        // Load the application data to get basic info
+        const { data: applicationData } = await supabase
+          .from('applications')
+          .select(`
+            *,
+            customers(*),
+            applications_drafts!inner(*)
+          `)
+          .eq('id', profileData.current_edit_application_id)
+          .eq('applications_drafts.user_id', profile.id)
+          .maybeSingle();
+
+        if (applicationData?.customers) {
+          const customer = applicationData.customers;
+          const resumeBasicInfo: BasicInfoData = {
+            nome: customer.full_name,
+            cpf: customer.cpf,
+            telefone: customer.phone || '',
+            whatsapp: customer.whatsapp || '',
+            naturalidade: customer.birthplace || '',
+            uf: customer.birthplace_uf || '',
+            nascimento: customer.birth_date ? new Date(customer.birth_date) : new Date(),
+            email: customer.email || '',
+          };
+
+          setBasicInfoData(resumeBasicInfo);
+          setPendingApplicationId(profileData.current_edit_application_id);
+          setShowExpandedForm(true);
+          
+          toast({
+            title: "Retomando edição",
+            description: "Continuando onde você parou...",
+          });
+        }
+      }
+      setResumeSessionChecked(true);
+    } catch (error) {
+      console.error('Error checking resume session:', error);
+      setResumeSessionChecked(true);
+    }
+  };
+
   load();
   loadReanalysts();
+  
+  // Check for resume session after a delay to ensure components are mounted
+  if (profile?.id && !resumeSessionChecked) {
+    setTimeout(async () => {
+      const sessionData = await checkForExistingSession();
+      if (sessionData) {
+        // Load the application data to get basic info
+        const { data: applicationData } = await supabase
+          .from('applications')
+          .select(`
+            *,
+            customers(*)
+          `)
+          .eq('id', sessionData.applicationId)
+          .single();
+
+        if (applicationData?.customers) {
+          const customer = applicationData.customers;
+          const resumeBasicInfo: BasicInfoData = {
+            nome: customer.full_name,
+            cpf: customer.cpf,
+            telefone: customer.phone || '',
+            whatsapp: customer.whatsapp || '',
+            naturalidade: customer.birthplace || '',
+            uf: customer.birthplace_uf || '',
+            nascimento: customer.birth_date ? new Date(customer.birth_date) : new Date(),
+            email: customer.email || '',
+          };
+
+          setBasicInfoData(resumeBasicInfo);
+          setPendingApplicationId(sessionData.applicationId);
+          setShowExpandedForm(true);
+          
+          toast({
+            title: "Retomando edição",
+            description: "Continuando onde você parou...",
+          });
+        }
+      }
+      setResumeSessionChecked(true);
+    }, 1000);
+  }
+  
   return () => {
     mounted = false;
   };
-}, [profile?.id]);
+}, [profile?.id, resumeSessionChecked]);
 
   // Auto-alert re-render timer
   useEffect(() => {

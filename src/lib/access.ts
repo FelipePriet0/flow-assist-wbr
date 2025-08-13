@@ -20,3 +20,7 @@ export function sameCompany(profile: Profile | null | undefined, targetCompanyId
   if (!profile?.company_id || !targetCompanyId) return false;
   return profile.company_id === targetCompanyId;
 }
+
+export function isSenior(profile: Profile | null | undefined) {
+  return isPremium(profile); // Alias para is_premium, sem novo papel
+}

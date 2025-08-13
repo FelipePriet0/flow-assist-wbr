@@ -370,6 +370,7 @@ export type Database = {
       applications_drafts: {
         Row: {
           address_data: Json | null
+          application_id: string | null
           company_id: string | null
           created_at: string
           customer_data: Json | null
@@ -379,11 +380,13 @@ export type Database = {
           other_data: Json | null
           references_data: Json | null
           spouse_data: Json | null
+          step: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           address_data?: Json | null
+          application_id?: string | null
           company_id?: string | null
           created_at?: string
           customer_data?: Json | null
@@ -393,11 +396,13 @@ export type Database = {
           other_data?: Json | null
           references_data?: Json | null
           spouse_data?: Json | null
+          step?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           address_data?: Json | null
+          application_id?: string | null
           company_id?: string | null
           created_at?: string
           customer_data?: Json | null
@@ -407,10 +412,26 @@ export type Database = {
           other_data?: Json | null
           references_data?: Json | null
           spouse_data?: Json | null
+          step?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "applications_drafts_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_drafts_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_app_cohort"
+            referencedColumns: ["application_id"]
+          },
+        ]
       }
       appointments: {
         Row: {
@@ -821,6 +842,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           company_id: string | null
+          current_edit_application_id: string | null
           full_name: string | null
           id: string
           role: Database["public"]["Enums"]["user_role"]
@@ -828,6 +850,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           company_id?: string | null
+          current_edit_application_id?: string | null
           full_name?: string | null
           id: string
           role?: Database["public"]["Enums"]["user_role"]
@@ -835,6 +858,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           company_id?: string | null
+          current_edit_application_id?: string | null
           full_name?: string | null
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
@@ -1080,6 +1104,7 @@ export type Database = {
         Returns: {
           avatar_url: string | null
           company_id: string | null
+          current_edit_application_id: string | null
           full_name: string | null
           id: string
           role: Database["public"]["Enums"]["user_role"]
@@ -1090,6 +1115,10 @@ export type Database = {
         Returns: string
       }
       is_premium: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_senior: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
@@ -1122,6 +1151,7 @@ export type Database = {
         Returns: {
           avatar_url: string | null
           company_id: string | null
+          current_edit_application_id: string | null
           full_name: string | null
           id: string
           role: Database["public"]["Enums"]["user_role"]

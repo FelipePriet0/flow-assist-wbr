@@ -10,10 +10,11 @@ export interface DraftData {
   spouse_data?: any;
   references_data?: any;
   other_data?: any;
+  step?: string;
 }
 
 export function useDraftForm() {
-  const [currentDraft, setCurrentDraft] = useState<{ id: string; data: DraftData } | null>(null);
+  const [currentDraft, setCurrentDraft] = useState<{ id: string; data: DraftData; applicationId?: string; step?: string } | null>(null);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
@@ -54,7 +55,7 @@ export function useDraftForm() {
     }
   };
 
-  const saveDraft = useCallback(async (data: DraftData, showToast = true) => {
+  const saveDraft = useCallback(async (data: DraftData, applicationId?: string, step?: string, showToast = true) => {
     setIsAutoSaving(true);
     try {
       if (currentDraft?.id) {
@@ -69,10 +70,20 @@ export function useDraftForm() {
             spouse_data: data.spouse_data,
             references_data: data.references_data,
             other_data: data.other_data,
+            step: step || data.step || 'basic',
+            application_id: applicationId || currentDraft.applicationId,
           })
           .eq('id', currentDraft.id);
 
         if (error) throw error;
+        
+        // Update local state
+        setCurrentDraft(prev => prev ? {
+          ...prev,
+          data,
+          applicationId: applicationId || prev.applicationId,
+          step: step || data.step || prev.step
+        } : null);
       } else {
         // Create new draft
         const { data: newDraft, error } = await supabase
@@ -86,12 +97,27 @@ export function useDraftForm() {
             spouse_data: data.spouse_data,
             references_data: data.references_data,
             other_data: data.other_data,
+            step: step || data.step || 'basic',
+            application_id: applicationId,
           })
           .select()
           .single();
 
         if (error) throw error;
-        setCurrentDraft({ id: newDraft.id, data });
+        setCurrentDraft({ 
+          id: newDraft.id, 
+          data, 
+          applicationId: applicationId,
+          step: step || data.step || 'basic'
+        });
+      }
+
+      // Update current_edit_application_id in profile if applicationId provided
+      if (applicationId) {
+        await supabase
+          .from('profiles')
+          .update({ current_edit_application_id: applicationId })
+          .eq('id', (await supabase.auth.getUser()).data.user?.id);
       }
 
       setLastSaved(new Date());
@@ -106,10 +132,15 @@ export function useDraftForm() {
       if (showToast) {
         toast({
           title: "Erro ao salvar",
-          description: "Não foi possível salvar o rascunho",
+          description: "Não foi possível salvar o rascunho. Tentando novamente em alguns segundos...",
           variant: "destructive",
         });
       }
+      
+      // Auto-retry after 3 seconds on error
+      setTimeout(() => {
+        saveDraft(data, applicationId, step, false);
+      }, 3000);
     } finally {
       setIsAutoSaving(false);
     }
@@ -131,6 +162,63 @@ export function useDraftForm() {
     }
   };
 
+  const clearEditingSession = async () => {
+    try {
+      await supabase
+        .from('profiles')
+        .update({ current_edit_application_id: null })
+        .eq('id', (await supabase.auth.getUser()).data.user?.id);
+    } catch (error) {
+      console.error('Error clearing editing session:', error);
+    }
+  };
+
+  const checkForResumeSession = useCallback(async () => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('current_edit_application_id')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (profile?.current_edit_application_id) {
+        // Load draft for this application
+        const { data: draft } = await supabase
+          .from('applications_drafts')
+          .select('*')
+          .eq('application_id', profile.current_edit_application_id)
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+          .maybeSingle();
+
+        if (draft) {
+          setCurrentDraft({
+            id: draft.id,
+            data: {
+              customer_data: draft.customer_data,
+              address_data: draft.address_data,
+              employment_data: draft.employment_data,
+              household_data: draft.household_data,
+              spouse_data: draft.spouse_data,
+              references_data: draft.references_data,
+              other_data: draft.other_data,
+              step: draft.step,
+            },
+            applicationId: draft.application_id,
+            step: draft.step || 'basic'
+          });
+          
+          return {
+            applicationId: profile.current_edit_application_id,
+            step: draft.step || 'basic'
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for resume session:', error);
+    }
+    return null;
+  }, []);
+
   return {
     currentDraft,
     isAutoSaving,
@@ -138,5 +226,7 @@ export function useDraftForm() {
     saveDraft,
     deleteDraft,
     loadExistingDraft,
+    clearEditingSession,
+    checkForResumeSession,
   };
 }

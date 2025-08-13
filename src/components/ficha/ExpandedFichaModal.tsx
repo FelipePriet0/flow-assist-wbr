@@ -8,8 +8,19 @@ import {
 import NovaFichaComercialForm, { ComercialFormValues } from '@/components/NovaFichaComercialForm';
 import { BasicInfoData } from './BasicInfoModal';
 import { Badge } from "@/components/ui/badge";
-import { useDraftForm } from '@/hooks/useDraftForm';
-import { Loader2, SaveIcon, CheckIcon } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { useDraftPersistence } from '@/hooks/useDraftPersistence';
+import { Loader2, SaveIcon, CheckIcon, X } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ExpandedFichaModalProps {
   open: boolean;
@@ -26,8 +37,9 @@ export function ExpandedFichaModal({
   basicInfo,
   applicationId 
 }: ExpandedFichaModalProps) {
-  const { isAutoSaving, lastSaved, saveDraft } = useDraftForm();
+  const { isAutoSaving, lastSaved, saveDraft, clearEditingSession } = useDraftPersistence();
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Auto-save status component
   const SaveStatus = () => {
@@ -79,10 +91,35 @@ export function ExpandedFichaModal({
         },
       };
       
-      saveDraft(draftData, false); // Don't show toast for auto-save
-    }, 3000); // Save after 3 seconds of inactivity
+      if (applicationId) {
+        saveDraft(applicationId, draftData, 'full', false); // Don't show toast for auto-save
+      }
+    }, 700); // Save after 700ms of inactivity (optimized debounce)
 
     setAutoSaveTimer(timer);
+  };
+
+  const handleCancel = () => {
+    setShowCancelDialog(true);
+  };
+
+  const handleCancelConfirm = async (keepDraft: boolean) => {
+    if (!keepDraft) {
+      // Clear the editing session and draft
+      await clearEditingSession();
+      // Note: We're not deleting the draft as it might be valuable for recovery
+    } else {
+      // Just clear the editing session but keep the draft
+      await clearEditingSession();
+    }
+    setShowCancelDialog(false);
+    onClose();
+  };
+
+  const handleSubmitWrapper = async (data: ComercialFormValues) => {
+    await onSubmit(data);
+    // Clear editing session after successful submission
+    await clearEditingSession();
   };
 
   useEffect(() => {
@@ -177,26 +214,69 @@ export function ExpandedFichaModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[1200px] max-h-[95vh] overflow-hidden">
-        <DialogHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl">
-              Ficha Comercial - {basicInfo.nome}
-            </DialogTitle>
-            <SaveStatus />
-          </div>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={() => handleCancel()}>
+        <DialogContent 
+          className="max-w-[1200px] max-h-[95vh] overflow-hidden"
+          onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click
+        >
+          <DialogHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl">
+                Ficha Comercial - {basicInfo.nome}
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <SaveStatus />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancel}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
-          <NovaFichaComercialForm
-            onSubmit={onSubmit}
-            onCancel={onClose}
-            initialValues={transformedFormData}
-            onFormChange={handleFormChange}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="flex-1 overflow-hidden">
+            <NovaFichaComercialForm
+              onSubmit={handleSubmitWrapper}
+              onCancel={handleCancel}
+              initialValues={transformedFormData}
+              onFormChange={handleFormChange}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar edição da ficha?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem alterações não finalizadas. O que deseja fazer?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowCancelDialog(false)}>
+              Continuar editando
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => handleCancelConfirm(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Manter rascunho
+            </AlertDialogAction>
+            <AlertDialogAction 
+              onClick={() => handleCancelConfirm(false)}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Descartar alterações
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
