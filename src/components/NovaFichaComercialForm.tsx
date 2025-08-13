@@ -136,11 +136,24 @@ const schema = z.object({
 
 export type ComercialFormValues = z.infer<typeof schema>;
 
-export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmit: (data: ComercialFormValues) => Promise<void>; onCancel: () => void }) {
-  const form = useForm<ComercialFormValues>({ resolver: zodResolver(schema), defaultValues: {
+interface NovaFichaComercialFormProps {
+  onSubmit: (data: ComercialFormValues) => Promise<void>;
+  onCancel: () => void;
+  initialValues?: Partial<ComercialFormValues>;
+  onFormChange?: (data: ComercialFormValues) => void;
+}
+
+export default function NovaFichaComercialForm({ onSubmit, onCancel, initialValues, onFormChange }: NovaFichaComercialFormProps) {
+  const defaultValues: Partial<ComercialFormValues> = {
     cliente: { nome: "" },
     relacoes: { temContrato: "Não" },
-  }});
+    ...initialValues,
+  };
+
+  const form = useForm<ComercialFormValues>({ 
+    resolver: zodResolver(schema), 
+    defaultValues,
+  });
 
   // Side effects for contract logic
   const temContrato = form.watch("relacoes.temContrato");
@@ -176,6 +189,14 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel }: { onSubmi
     };
     await onSubmit(values);
   }
+
+  // Watch form changes for auto-save
+  const formValues = form.watch();
+  React.useEffect(() => {
+    if (onFormChange) {
+      onFormChange(formValues);
+    }
+  }, [formValues, onFormChange]);
 
   return (
     <Form {...form}>

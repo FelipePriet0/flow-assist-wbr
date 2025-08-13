@@ -192,6 +192,8 @@ export function ExpandedFichaModal({
           <NovaFichaComercialForm
             onSubmit={onSubmit}
             onCancel={onClose}
+            initialValues={transformedFormData}
+            onFormChange={handleFormChange}
           />
         </div>
       </DialogContent>
