@@ -523,6 +523,7 @@ useEffect(() => {
   };
 
   const handleAprovar = async (card: CardItem, parecer: string) => {
+    console.log("Aprovando card:", card.id, "parecer:", parecer);
     if (!parecer.trim()) {
       setParecerAction({ action: 'aprovar', card });
       setShowParecerConfirm(true);
@@ -538,27 +539,25 @@ useEffect(() => {
 
       if (error) throw error;
       
-      setCards(prev => prev.map(c => 
-        c.id === card.id 
-          ? { ...c, columnId: "aprovado", parecer, lastMovedAt: new Date().toISOString() }
-          : c
-      ));
+      // Reload page to get fresh data
+      window.location.reload();
 
       toast({
         title: "Ficha aprovada",
         description: "Decisão registrada com sucesso",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao aprovar:', error);
       toast({
         title: "Erro",
-        description: "Erro ao aprovar ficha",
+        description: `Erro ao aprovar ficha: ${error.message}`,
         variant: "destructive",
       });
     }
   };
 
   const handleNegar = async (card: CardItem, parecer: string) => {
+    console.log("Negando card:", card.id, "parecer:", parecer);
     if (!parecer.trim()) {
       setParecerAction({ action: 'negar', card });
       setShowParecerConfirm(true);
@@ -574,27 +573,25 @@ useEffect(() => {
 
       if (error) throw error;
       
-      setCards(prev => prev.map(c => 
-        c.id === card.id 
-          ? { ...c, columnId: "negado_taxa", parecer, lastMovedAt: new Date().toISOString() }
-          : c
-      ));
+      // Reload page to get fresh data
+      window.location.reload();
 
       toast({
         title: "Ficha negada",
         description: "Decisão registrada com sucesso",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao negar:', error);
       toast({
         title: "Erro",
-        description: "Erro ao negar ficha",
+        description: `Erro ao negar ficha: ${error.message}`,
         variant: "destructive",
       });
     }
   };
 
   const handleReanalisar = async (card: CardItem, parecer: string) => {
+    console.log("Reanalysando card:", card.id, "parecer:", parecer);
     if (!parecer.trim()) {
       setParecerAction({ action: 'reanalisar', card });
       setShowParecerConfirm(true);
@@ -610,21 +607,18 @@ useEffect(() => {
 
       if (error) throw error;
       
-      setCards(prev => prev.map(c => 
-        c.id === card.id 
-          ? { ...c, columnId: "reanalise", parecer, lastMovedAt: new Date().toISOString() }
-          : c
-      ));
+      // Reload page to get fresh data
+      window.location.reload();
 
       toast({
         title: "Enviado para reanálise",
         description: "Decisão registrada com sucesso",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao reanalisar:', error);
       toast({
         title: "Erro",
-        description: "Erro ao enviar para reanálise",
+        description: `Erro ao enviar para reanálise: ${error.message}`,
         variant: "destructive",
       });
     }
