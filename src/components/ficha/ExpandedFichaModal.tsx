@@ -55,6 +55,8 @@ export function ExpandedFichaModal({
   const [formData, setFormData] = useState<ComercialFormValues | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [pendingAction, setPendingAction] = useState<'close' | 'save' | null>(null);
+  const [initialFormData, setInitialFormData] = useState<ComercialFormValues | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Auto-save status component
   const SaveStatus = () => {
@@ -79,9 +81,44 @@ export function ExpandedFichaModal({
     return null;
   };
 
+  // Function to normalize values for comparison
+  const normalizeValue = (value: any): any => {
+    if (value === null || value === undefined || value === '') {
+      return '';
+    }
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const normalized: any = {};
+      for (const key in value) {
+        normalized[key] = normalizeValue(value[key]);
+      }
+      return normalized;
+    }
+    if (Array.isArray(value)) {
+      return value.map(normalizeValue);
+    }
+    return value;
+  };
+
+  // Function to compare form data with initial values
+  const compareFormData = (current: ComercialFormValues, initial: ComercialFormValues): boolean => {
+    const normalizedCurrent = normalizeValue(current);
+    const normalizedInitial = normalizeValue(initial);
+    return JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial);
+  };
+
   const handleFormChange = (formData: any) => {
     setFormData(formData);
-    setHasChanges(true);
+    
+    // Only set hasChanges if we're initialized and there are actual changes
+    if (isInitialized && initialFormData) {
+      const hasActualChanges = compareFormData(formData, initialFormData);
+      setHasChanges(hasActualChanges);
+    } else if (!isInitialized) {
+      // Store initial form data on first change (after form initialization)
+      setInitialFormData(formData);
+      setIsInitialized(true);
+      setHasChanges(false); // No changes on initialization
+    }
     
     // Clear existing timer
     if (autoSaveTimer) {
@@ -181,6 +218,15 @@ export function ExpandedFichaModal({
     setShowDeleteParecerDialog(false);
     setParecerToDelete(null);
   };
+
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (open) {
+      setHasChanges(false);
+      setIsInitialized(false);
+      setInitialFormData(null);
+    }
+  }, [open]);
 
   useEffect(() => {
     return () => {
