@@ -13,7 +13,6 @@ import Historico from "./pages/Historico";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
-import DevMock from "./pages/DevMock";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -34,9 +33,6 @@ const App = () => (
                 <Route path="/dashboard/all" element={<Index />} />
                 <Route path="/dashboard/:company" element={<Index />} />
                 <Route path="/perfil" element={<Profile />} />
-                {process.env.NODE_ENV === 'development' && (
-                  <Route path="/dev/mock" element={<DevMock />} />
-                )}
               </Route>
             </Route>
 

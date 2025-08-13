@@ -1,8 +1,6 @@
 import * as React from "react";
 import { useSearchParams } from "react-router-dom";
-import { format } from "date-fns/format";
-import { addDays } from "date-fns/addDays";
-import { startOfWeek } from "date-fns/startOfWeek";
+import { format, addDays, startOfWeek } from "date-fns";
 import { DndContext, DragEndEvent } from "@dnd-kit/core";
 import { KanbanSquare, ChevronLeft, ChevronRight, CalendarDays, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";

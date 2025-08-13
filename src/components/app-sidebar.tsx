@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { CalendarDays, History, KanbanSquare, User, TestTube } from "lucide-react";
+import { CalendarDays, History, KanbanSquare, User } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -22,9 +22,6 @@ export function AppSidebar() {
     { title: "Agenda", url: "/agenda", icon: CalendarDays },
     { title: "Histórico", url: "/historico", icon: History },
     { title: "Perfil", url: "/perfil", icon: User },
-    ...(process.env.NODE_ENV === 'development' ? [
-      { title: "Dev Tools", url: "/dev/mock", icon: TestTube }
-    ] : [])
   ];
 
   return (
