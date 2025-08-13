@@ -347,8 +347,8 @@ useEffect(() => {
       const card = cards.find(c => c.id === cardId);
       if (!card) return;
 
-      // Map frontend ColumnId to backend status values
-      const statusMap: Record<ColumnId, string> = {
+      // Map frontend ColumnId to backend status values with proper typing
+      const statusMap: Record<ColumnId, "aprovado" | "pendente" | "reanalisar" | "negado"> = {
         "recebido": "pendente",
         "em_analise": "pendente", 
         "reanalise": "reanalisar",
@@ -357,11 +357,13 @@ useEffect(() => {
         "finalizado": "aprovado"
       };
 
+      const backendStatus = statusMap[target];
+
       // Call the Supabase RPC to change status (if available)
-      if (supabase.rpc) {
+      if (supabase.rpc && backendStatus) {
         const { error } = await supabase.rpc('applications_change_status', {
           p_app_id: cardId,
-          p_new_status: statusMap[target] || target,
+          p_new_status: backendStatus,
           p_comment: label || `Movido para ${target}`
         });
 
