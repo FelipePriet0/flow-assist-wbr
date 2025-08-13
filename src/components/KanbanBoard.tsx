@@ -41,14 +41,15 @@ import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Calendar as CalendarIcon, UserPlus, Search } from "lucide-react";
 import ModalEditarFicha from "@/components/ui/ModalEditarFicha";
 import NovaFichaComercialForm, { ComercialFormValues } from "@/components/NovaFichaComercialForm";
+
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useAuth } from "@/context/AuthContext";
 import { canChangeStatus, isPremium } from "@/lib/access";
-import wbrLogo from "@/assets/wbr-logo.svg";
-import mznetLogo from "@/assets/mznet-logo.svg";
+import { supabase } from "@/integrations/supabase/client";
 
 // Types
 export type ColumnId =
@@ -79,7 +80,10 @@ export interface CardItem {
   lastMovedAt: string; // ISO
   labels: string[];
   companyId?: string;
+  companyName?: string;
+  companyLogoUrl?: string | null;
 }
+
 
 const COLUMNS: { id: ColumnId; title: string }[] = [
   { id: "recebido", title: "Recebido" },
@@ -243,8 +247,65 @@ export default function KanbanBoard() {
     });
   }, [cards, query, responsavelFiltro, prazoFiltro]);
 
-  // New card creation handled by NovaFichaComercialForm component
-
+// New card creation handled by NovaFichaComercialForm component
+// Load applications from Supabase (with company and customer for logos and names)
+useEffect(() => {
+  let mounted = true;
+  const load = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("applications")
+        .select(`
+          id,
+          status,
+          analyst_name,
+          comments,
+          received_at,
+          due_at,
+          created_at,
+          company_id,
+          companies:company_id ( name, logo_url ),
+          customers:customer_id ( full_name, phone )
+        `)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      if (!mounted || !data) return;
+      const mapped: CardItem[] = (data as any[]).map((row: any) => {
+        const createdAt = row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString();
+        const receivedAt = row.received_at ? new Date(row.received_at).toISOString() : createdAt;
+        const deadline = row.due_at ? new Date(row.due_at).toISOString() : createdAt;
+        const col = (row.status as ColumnId) ?? "recebido";
+        return {
+          id: row.id,
+          nome: row.customers?.full_name ?? "Cliente",
+          receivedAt,
+          deadline,
+          responsavel: row.analyst_name ?? undefined,
+          telefone: row.customers?.phone ?? undefined,
+          score: undefined,
+          checks: { moradia: false, emprego: false, vinculos: false },
+          parecer: row.comments ?? "",
+          columnId: col,
+          createdAt,
+          updatedAt: createdAt,
+          lastMovedAt: createdAt,
+          labels: [],
+          companyId: row.company_id ?? undefined,
+          companyName: row.companies?.name ?? undefined,
+          companyLogoUrl: row.companies?.logo_url ?? undefined,
+        } as CardItem;
+      });
+      setCards(mapped);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("[Kanban] Falha ao carregar aplicações", e);
+    }
+  };
+  load();
+  return () => {
+    mounted = false;
+  };
+}, [profile?.id]);
 
   // Auto-alert re-render timer
   useEffect(() => {
@@ -532,13 +593,8 @@ function KanbanCard({
   const msUntil = new Date(card.deadline).getTime() - Date.now();
   const onFire = fireColumns.has(card.columnId) && msUntil >= 0 && msUntil <= 24 * 60 * 60 * 1000;
 
-  const COMPANY_MAP: Record<string, { name: string; src: string }> = {
-    UUID_WBR: { name: "WBR", src: wbrLogo },
-    UUID_MZNET: { name: "Mznet", src: mznetLogo },
-  };
-  const resolvedCompanyId = (card.companyId ?? profile?.company_id) || "";
-  const companyLogo = COMPANY_MAP[resolvedCompanyId]?.src;
-  const companyName = COMPANY_MAP[resolvedCompanyId]?.name ?? "Empresa";
+const companyName = card.companyName ?? "Empresa";
+
 
   const displayLabels = premium ? card.labels.filter((l) => l !== "Em Análise") : card.labels;
 
@@ -590,10 +646,36 @@ function KanbanCard({
         </>
       )}
 
-      <div className="p-3 border-b flex items-center justify-between">
-        <div className="font-medium">{card.nome}</div>
-        {headerBadges}
-      </div>
+<div className="p-3 border-b flex items-center justify-between">
+  <div className="flex items-center gap-2">
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {card.companyLogoUrl ? (
+            <img
+              src={card.companyLogoUrl}
+              alt={`Logo da empresa ${companyName}`}
+              width={24}
+              height={24}
+              loading="lazy"
+              className="h-6 w-6 rounded-sm object-contain"
+            />
+          ) : (
+            <div
+              className="h-6 w-6 flex items-center justify-center rounded-sm border bg-muted text-base"
+              aria-label={`Empresa: ${companyName}`}
+            >
+              🏢
+            </div>
+          )}
+        </TooltipTrigger>
+        <TooltipContent>Empresa: {companyName}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+    <div className="font-medium">{card.nome}</div>
+  </div>
+  {headerBadges}
+</div>
       <div className="p-3 relative flex flex-col gap-2">
         <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
           <div>
