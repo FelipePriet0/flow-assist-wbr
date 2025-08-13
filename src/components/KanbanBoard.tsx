@@ -484,6 +484,114 @@ useEffect(() => {
     setMockCard(card);
   }
 
+  const handleIngressar = async (card: CardItem) => {
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .update({
+          status: 'em_analise',
+          analyst_id: profile?.id,
+          analyst_name: profile?.full_name
+        })
+        .eq('id', card.id);
+
+      if (error) throw error;
+      
+      // Reload the page to refresh data
+      window.location.reload();
+      
+      toast({
+        title: "Sucesso",
+        description: "Ficha movida para Em Análise",
+      });
+    } catch (error) {
+      console.error('Erro ao ingressar:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao mover ficha",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAprovar = async (card: CardItem) => {
+    try {
+      const { error } = await supabase.rpc('applications_change_status', {
+        p_app_id: card.id,
+        p_new_status: 'aprovado'
+      });
+
+      if (error) throw error;
+      
+      // Reload the page to refresh data
+      window.location.reload();
+      
+      toast({
+        title: "Sucesso",
+        description: "Ficha aprovada",
+      });
+    } catch (error) {
+      console.error('Erro ao aprovar:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao aprovar ficha",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleNegar = async (card: CardItem) => {
+    try {
+      const { error } = await supabase.rpc('applications_change_status', {
+        p_app_id: card.id,
+        p_new_status: 'negado'
+      });
+
+      if (error) throw error;
+      
+      // Reload the page to refresh data
+      window.location.reload();
+      
+      toast({
+        title: "Sucesso",
+        description: "Ficha negada",
+      });
+    } catch (error) {
+      console.error('Erro ao negar:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao negar ficha",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReanalisar = async (card: CardItem) => {
+    try {
+      const { error } = await supabase.rpc('applications_change_status', {
+        p_app_id: card.id,
+        p_new_status: 'reanalisar'
+      });
+
+      if (error) throw error;
+      
+      // Reload the page to refresh data
+      window.location.reload();
+      
+      toast({
+        title: "Sucesso",
+        description: "Ficha enviada para reanálise",
+      });
+    } catch (error) {
+      console.error('Erro ao enviar para reanálise:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao enviar para reanálise",
+        variant: "destructive",
+      });
+    }
+  };
+
   function saveEdits() {
     if (!editing || !editing.parecer.trim()) {
       toast({ title: "Parecer do analista é obrigatório." });
@@ -815,17 +923,21 @@ useEffect(() => {
                     {filteredCards
                       .filter((c) => c.columnId === col.id)
                        .map((card) => (
-                          <OptimizedKanbanCard
-                            key={card.id}
-                            card={card}
-                            isOverdue={isOverdue(card)}
-                            allowMove={allowMove}
-                            onEdit={openEdit}
-                            onDelete={(card) => {
-                              setCardToDelete(card);
-                              setShowDeleteConfirm(true);
-                            }}
-                          />
+                           <OptimizedKanbanCard
+                             key={card.id}
+                             card={card}
+                             isOverdue={isOverdue(card)}
+                             allowMove={allowMove}
+                             onEdit={openEdit}
+                             onDelete={(card) => {
+                               setCardToDelete(card);
+                               setShowDeleteConfirm(true);
+                             }}
+                             onIngressar={handleIngressar}
+                             onAprovar={handleAprovar}
+                             onNegar={handleNegar}
+                             onReanalisar={handleReanalisar}
+                           />
                        ))}
                   </ColumnDropArea>
                 </SortableContext>

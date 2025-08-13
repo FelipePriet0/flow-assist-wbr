@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,8 +20,14 @@ import {
   Trash2, 
   Edit,
   User,
-  UserCheck
+  UserCheck,
+  Check,
+  X,
+  RotateCcw
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { canIngressar, canChangeStatus } from "@/lib/access";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { CardItem } from "@/components/KanbanBoard";
 
@@ -30,6 +37,10 @@ interface OptimizedKanbanCardProps {
   allowMove: boolean;
   onEdit: (card: CardItem) => void;
   onDelete: (card: CardItem) => void;
+  onIngressar?: (card: CardItem) => void;
+  onAprovar?: (card: CardItem) => void;
+  onNegar?: (card: CardItem) => void;
+  onReanalisar?: (card: CardItem) => void;
 }
 
 export function OptimizedKanbanCard({ 
@@ -37,8 +48,15 @@ export function OptimizedKanbanCard({
   isOverdue, 
   allowMove, 
   onEdit, 
-  onDelete 
+  onDelete,
+  onIngressar,
+  onAprovar,
+  onNegar,
+  onReanalisar,
 }: OptimizedKanbanCardProps) {
+  const { profile } = useAuth();
+  const { toast } = useToast();
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.id,
     disabled: !allowMove,
@@ -79,6 +97,31 @@ export function OptimizedKanbanCard({
       .toUpperCase()
       .slice(0, 2);
   };
+
+  const handleAction = async (action: string, actionFn?: (card: CardItem) => void) => {
+    if (!actionFn) return;
+    
+    setActionLoading(action);
+    try {
+      await actionFn(card);
+      toast({
+        title: "Ação executada",
+        description: `${action} realizado com sucesso`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: `Erro ao executar ${action}`,
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const showIngressarButton = card.columnId === "recebido" && canIngressar(profile);
+  const showDecisionButtons = card.columnId === "em_analise" && canChangeStatus(profile);
+  const showReanalysisButtons = card.columnId === "reanalise" && canChangeStatus(profile);
 
   return (
     <Card
@@ -226,6 +269,83 @@ export function OptimizedKanbanCard({
               <Badge variant="outline" className="text-xs px-1 py-0">
                 +{card.labels.length - 2}
               </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        {(showIngressarButton || showDecisionButtons || showReanalysisButtons) && (
+          <div className="mt-3 pt-3 border-t border-border/50 flex gap-1 flex-wrap">
+            {showIngressarButton && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => handleAction("Ingressar", onIngressar)}
+                disabled={actionLoading === "Ingressar"}
+                className="h-7 text-xs px-2"
+              >
+                {actionLoading === "Ingressar" ? "..." : "Ingressar"}
+              </Button>
+            )}
+            
+            {showDecisionButtons && (
+              <>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => handleAction("Aprovar", onAprovar)}
+                  disabled={actionLoading === "Aprovar"}
+                  className="h-7 text-xs px-2 bg-green-600 hover:bg-green-700"
+                >
+                  <Check className="w-3 h-3 mr-1" />
+                  {actionLoading === "Aprovar" ? "..." : "Aprovar"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => handleAction("Negar", onNegar)}
+                  disabled={actionLoading === "Negar"}
+                  className="h-7 text-xs px-2"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  {actionLoading === "Negar" ? "..." : "Negar"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAction("Reanalisar", onReanalisar)}
+                  disabled={actionLoading === "Reanalisar"}
+                  className="h-7 text-xs px-2"
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  {actionLoading === "Reanalisar" ? "..." : "Reanalisar"}
+                </Button>
+              </>
+            )}
+            
+            {showReanalysisButtons && (
+              <>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => handleAction("Aprovar", onAprovar)}
+                  disabled={actionLoading === "Aprovar"}
+                  className="h-7 text-xs px-2 bg-green-600 hover:bg-green-700"
+                >
+                  <Check className="w-3 h-3 mr-1" />
+                  {actionLoading === "Aprovar" ? "..." : "Aprovar"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => handleAction("Negar", onNegar)}
+                  disabled={actionLoading === "Negar"}
+                  className="h-7 text-xs px-2"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  {actionLoading === "Negar" ? "..." : "Negar"}
+                </Button>
+              </>
             )}
           </div>
         )}
