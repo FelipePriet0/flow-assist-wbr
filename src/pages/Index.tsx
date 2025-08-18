@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import KanbanBoard from "@/components/KanbanBoard";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const Index = () => {
   useEffect(() => {
@@ -19,7 +20,9 @@ const Index = () => {
         </div>
       </header>
       <main className="container pb-16 pt-2">
-        <KanbanBoard />
+        <ErrorBoundary>
+          <KanbanBoard />
+        </ErrorBoundary>
       </main>
     </div>
   );

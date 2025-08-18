@@ -101,9 +101,43 @@ export function ExpandedFichaModal({
 
   // Function to compare form data with initial values
   const compareFormData = (current: ComercialFormValues, initial: ComercialFormValues): boolean => {
-    const normalizedCurrent = normalizeValue(current);
-    const normalizedInitial = normalizeValue(initial);
-    return JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial);
+    try {
+      const normalizedCurrent = normalizeValue(current);
+      const normalizedInitial = normalizeValue(initial);
+      
+      // Special handling for pareceres array
+      if (normalizedCurrent.pareceres && normalizedInitial.pareceres) {
+        const currentPareceres = normalizedCurrent.pareceres || [];
+        const initialPareceres = normalizedInitial.pareceres || [];
+        
+        // Compare parecer arrays more intelligently
+        if (currentPareceres.length !== initialPareceres.length) {
+          console.log('Parecer count changed:', currentPareceres.length, 'vs', initialPareceres.length);
+          return true;
+        }
+        
+        // Compare each parecer by text content (ignore timestamps/ids)
+        for (let i = 0; i < currentPareceres.length; i++) {
+          const current = currentPareceres[i];
+          const initial = initialPareceres[i];
+          if (current?.text !== initial?.text) {
+            console.log('Parecer text changed:', current?.text, 'vs', initial?.text);
+            return true;
+          }
+        }
+        
+        // Compare other fields excluding pareceres
+        const { pareceres: _, ...currentWithoutPareceres } = normalizedCurrent;
+        const { pareceres: __, ...initialWithoutPareceres } = normalizedInitial;
+        
+        return JSON.stringify(currentWithoutPareceres) !== JSON.stringify(initialWithoutPareceres);
+      }
+      
+      return JSON.stringify(normalizedCurrent) !== JSON.stringify(normalizedInitial);
+    } catch (error) {
+      console.error('Error comparing form data:', error);
+      return false; // Assume no changes on error
+    }
   };
 
   const handleFormChange = (formData: any) => {

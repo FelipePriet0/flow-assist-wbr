@@ -506,6 +506,12 @@ useEffect(() => {
 
         if (error) {
           console.error("Error changing status:", error);
+          toast({
+            title: "Erro ao alterar status",
+            description: `Erro: ${error.message}`,
+            variant: "destructive"
+          });
+          return; // Don't proceed with UI update if backend failed
         }
       }
 
@@ -603,10 +609,11 @@ useEffect(() => {
 
   const handleIngressar = async (card: CardItem) => {
     try {
+      console.log('Ingressando na ficha:', card.id, 'setting status to: pendente');
       const { error } = await supabase
         .from('applications')
         .update({
-          status: 'em_analise',
+          status: 'pendente', // Use enum value instead of column name
           analyst_id: profile?.id,
           analyst_name: profile?.full_name
         })
@@ -640,16 +647,21 @@ useEffect(() => {
     }
     
     try {
+      console.log('Calling applications_change_status with status: aprovado');
       const { error } = await supabase.rpc('applications_change_status', {
         p_app_id: card.id,
         p_new_status: 'aprovado',
         p_comment: parecer
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('RPC error on approve:', error);
+        throw error;
+      }
       
-      // Reload page to get fresh data
-      window.location.reload();
+      console.log('Status change successful, reloading applications...');
+      // Reload applications instead of whole page
+      await loadApplications();
 
       toast({
         title: "Ficha aprovada",
@@ -674,16 +686,21 @@ useEffect(() => {
     }
     
     try {
+      console.log('Calling applications_change_status with status: negado');
       const { error } = await supabase.rpc('applications_change_status', {
         p_app_id: card.id,
         p_new_status: 'negado',
         p_comment: parecer
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('RPC error on deny:', error);
+        throw error;
+      }
       
-      // Reload page to get fresh data
-      window.location.reload();
+      console.log('Status change successful, reloading applications...');
+      // Reload applications instead of whole page
+      await loadApplications();
 
       toast({
         title: "Ficha negada",
@@ -708,16 +725,21 @@ useEffect(() => {
     }
     
     try {
+      console.log('Calling applications_change_status with status: reanalisar');
       const { error } = await supabase.rpc('applications_change_status', {
         p_app_id: card.id,
         p_new_status: 'reanalisar',
         p_comment: parecer
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('RPC error on reanalyze:', error);
+        throw error;
+      }
       
-      // Reload page to get fresh data
-      window.location.reload();
+      console.log('Status change successful, reloading applications...');
+      // Reload applications instead of whole page
+      await loadApplications();
 
       toast({
         title: "Enviado para reanálise",
@@ -1159,14 +1181,22 @@ useEffect(() => {
           if (!cardToDelete) return;
           
           try {
-            await supabase.rpc('delete_application_safely', {
+            console.log('Attempting to delete application:', cardToDelete.id, 'with reason:', reason);
+            
+            const { data, error } = await supabase.rpc('delete_application_safely', {
               p_app_id: cardToDelete.id,
               p_reason: reason,
             });
 
+            if (error) {
+              console.error('Supabase RPC error:', error);
+              throw error;
+            }
+
+            console.log('Delete successful, deleted record ID:', data);
             setCards(prev => prev.filter(c => c.id !== cardToDelete.id));
             toast({ title: "Ficha deletada com sucesso" });
-          } catch (error) {
+          } catch (error: any) {
             console.error('Error deleting application:', error);
             toast({
               title: "Erro ao deletar ficha",
