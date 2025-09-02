@@ -54,7 +54,7 @@ import { BasicInfoModal, BasicInfoData } from "@/components/ficha/BasicInfoModal
 import { ExpandedFichaModal } from "@/components/ficha/ExpandedFichaModal";
 import { DeleteConfirmDialog } from "@/components/ficha/DeleteConfirmDialog";
 import { OptimizedKanbanCard } from "@/components/ficha/OptimizedKanbanCard";
-import { RecoveryToast } from "@/components/ficha/RecoveryToast";
+
 import { ParecerConfirmModal } from "@/components/ficha/ParecerConfirmModal";
 
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -1215,11 +1215,6 @@ useEffect(() => {
         customerCpf={cardToDelete?.cpf || ''}
       />
 
-      <RecoveryToast
-        onRecover={() => {
-          setShowExpandedForm(true);
-        }}
-      />
 
       <ParecerConfirmModal
         isOpen={showParecerConfirm}
