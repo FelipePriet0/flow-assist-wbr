@@ -74,7 +74,7 @@ export function useDraftPersistence() {
     setIsAutoSaving(true);
     
     try {
-      // Save or update draft
+      // Save or update draft with proper conflict resolution
       const { error } = await supabase
         .from('applications_drafts')
         .upsert({
@@ -89,6 +89,9 @@ export function useDraftPersistence() {
           other_data: formData.other_data,
           step: step,
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
         });
 
       if (error) throw error;

@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Trash2, Plus } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Parecer {
   id: string;
@@ -205,11 +206,26 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel, initialValu
     }
   }, [initialValues?.infoRelevantes?.parecerAnalise]);
 
-  // Sync pareceres with form
+  // Sync pareceres with form and update application comments
   React.useEffect(() => {
     const serialized = JSON.stringify(pareceres);
     form.setValue('infoRelevantes.parecerAnalise', serialized, { shouldValidate: false });
-  }, [pareceres, form]);
+    
+    // Update application comments with latest parecer
+    if (applicationId && pareceres.length > 0) {
+      const latestParecer = pareceres[pareceres.length - 1];
+      if (latestParecer?.text?.trim()) {
+        // Update comments field in application for quick access
+        supabase
+          .from('applications')
+          .update({ comments: latestParecer.text })
+          .eq('id', applicationId)
+          .then(({ error }) => {
+            if (error) console.log('Failed to update application comments:', error);
+          });
+      }
+    }
+  }, [pareceres, form, applicationId]);
 
   const addNovoParecer = () => {
     const newParecer: Parecer = {

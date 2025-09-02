@@ -275,11 +275,46 @@ const loadApplications = async () => {
       .order("created_at", { ascending: false });
     if (error) throw error;
     if (!data) return;
+
+    // Get drafts to extract pareceres
+    const { data: drafts } = await supabase
+      .from('applications_drafts')
+      .select('application_id, other_data');
+
+    const draftsMap = new Map(
+      drafts?.map(d => [d.application_id, d.other_data]) || []
+    );
+
     const mapped: CardItem[] = (data as any[]).map((row: any) => {
       const createdAt = row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString();
       const receivedAt = row.received_at ? new Date(row.received_at).toISOString() : createdAt;
       const deadline = row.due_at ? new Date(row.due_at).toISOString() : createdAt;
       const col = (row.status as ColumnId) ?? "recebido";
+      
+      // Extract parecer from draft data or comments
+      let parecer = row.comments ?? "";
+      try {
+        const draftData = draftsMap.get(row.id);
+        if (draftData && typeof draftData === 'object') {
+          const draftObject = draftData as any;
+          if (draftObject.infoRelevantes?.parecerAnalise) {
+            const parecerData = JSON.parse(draftObject.infoRelevantes.parecerAnalise);
+            if (Array.isArray(parecerData) && parecerData.length > 0) {
+              // Get the latest parecer
+              const latestParecer = parecerData[parecerData.length - 1];
+              if (latestParecer?.text?.trim()) {
+                parecer = latestParecer.text;
+              }
+            } else if (typeof parecerData === 'string' && parecerData.trim()) {
+              parecer = parecerData;
+            }
+          }
+        }
+      } catch (e) {
+        // Fallback to comments field if parsing fails
+        console.log('Failed to parse parecer for application', row.id, e);
+      }
+
       return {
         id: row.id,
         nome: row.customers?.full_name ?? "Cliente",
@@ -290,7 +325,7 @@ const loadApplications = async () => {
         telefone: row.customers?.phone ?? undefined,
         score: undefined,
         checks: { moradia: false, emprego: false, vinculos: false },
-        parecer: row.comments ?? "",
+        parecer,
         columnId: col,
         createdAt,
         updatedAt: createdAt,

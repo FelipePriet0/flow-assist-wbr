@@ -65,7 +65,24 @@ export function ParecerConfirmModal({
 }: ParecerConfirmModalProps) {
   const config = actionConfig[action];
   const Icon = config.icon;
-  const hasParecer = parecer && parecer.trim().length > 0;
+  
+  // Enhanced parecer validation
+  const hasParecer = React.useMemo(() => {
+    if (!parecer || typeof parecer !== 'string') return false;
+    
+    // Try to parse as JSON first (new format)
+    try {
+      const parsed = JSON.parse(parecer);
+      if (Array.isArray(parsed)) {
+        return parsed.some(p => p.text && p.text.trim().length > 0);
+      }
+    } catch {
+      // Not JSON, treat as plain string (legacy format)
+    }
+    
+    // Check if plain string has meaningful content
+    return parecer.trim().length > 0;
+  }, [parecer]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -103,13 +120,13 @@ export function ParecerConfirmModal({
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Parecer da Análise:</Label>
                 <Badge variant="outline" className="text-xs">
-                  {parecer.length} caracteres
+                  {getParecerDisplayText(parecer).length} caracteres
                 </Badge>
               </div>
               
               <ScrollArea className="h-[120px] w-full rounded-md border p-3">
                 <div className="text-sm whitespace-pre-wrap">
-                  {parecer}
+                  {getParecerDisplayText(parecer)}
                 </div>
               </ScrollArea>
               
@@ -146,4 +163,22 @@ export function ParecerConfirmModal({
       </DialogContent>
     </Dialog>
   );
+}
+
+// Helper function to extract display text from parecer
+function getParecerDisplayText(parecer?: string): string {
+  if (!parecer) return '';
+  
+  try {
+    const parsed = JSON.parse(parecer);
+    if (Array.isArray(parsed)) {
+      // Get the latest parecer or combine all
+      const latestParecer = parsed[parsed.length - 1];
+      return latestParecer?.text || '';
+    }
+  } catch {
+    // Not JSON, return as-is
+  }
+  
+  return parecer;
 }
