@@ -146,39 +146,8 @@ function isOverdue(card: CardItem): boolean {
   return false;
 }
 
-// Demo initial data
-const initialCards: CardItem[] = [
-  {
-    id: "1",
-    nome: "João Silva",
-    receivedAt: new Date().toISOString(),
-    deadline: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2).toISOString(),
-    responsavel: undefined,
-    score: 720,
-    checks: { moradia: true, emprego: true, vinculos: false },
-    parecer: "",
-    columnId: "recebido",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    lastMovedAt: new Date().toISOString(),
-    labels: [],
-  },
-  {
-    id: "2",
-    nome: "Maria Souza",
-    receivedAt: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
-    deadline: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-    responsavel: "Bruno",
-    score: 650,
-    checks: { moradia: true, emprego: false, vinculos: true },
-    parecer: "Documentos em validação.",
-    columnId: "em_analise",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
-    updatedAt: new Date().toISOString(),
-    lastMovedAt: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
-    labels: ["Em Análise"],
-  },
-];
+// Clean initial data for CEO presentation
+const initialCards: CardItem[] = [];
 
 const RESPONSAVEIS = ["Ana", "Bruno", "Carla", "Diego", "Equipe"];
 
@@ -725,10 +694,10 @@ useEffect(() => {
     }
     
     try {
-      console.log('Calling applications_change_status with status: reanalisar');
+      console.log('Calling applications_change_status with status: reanalise');
       const { error } = await supabase.rpc('applications_change_status', {
         p_app_id: card.id,
-        p_new_status: 'reanalisar',
+        p_new_status: 'reanalisar' as "aprovado" | "reanalisar" | "negado" | "pendente",
         p_comment: parecer
       });
 
