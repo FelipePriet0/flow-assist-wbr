@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, CheckIcon } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -248,6 +248,32 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel, initialValu
       onDeleteParecer(id);
     }
     setPareceres(prev => prev.filter(p => p.id !== id));
+  };
+
+  const confirmParecer = async (id: string) => {
+    const parecer = pareceres.find(p => p.id === id);
+    if (!parecer || !parecer.text.trim()) return;
+
+    // Force immediate save by triggering form change
+    const currentFormData = form.getValues();
+    const serializedPareceres = JSON.stringify(pareceres);
+    form.setValue('infoRelevantes.parecerAnalise', serializedPareceres, { shouldValidate: false });
+    
+    // Trigger onFormChange to ensure auto-save
+    if (onFormChange) {
+      onFormChange({ ...currentFormData, infoRelevantes: { ...currentFormData.infoRelevantes, parecerAnalise: serializedPareceres } });
+    }
+
+    // Update application comments immediately
+    if (applicationId) {
+      await supabase
+        .from('applications')
+        .update({ comments: parecer.text })
+        .eq('id', applicationId);
+    }
+
+    // Show success feedback
+    console.log('Parecer confirmado e salvo com sucesso');
   };
 
   const formatDateTime = (dateString: string) => {
@@ -967,13 +993,26 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel, initialValu
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <Textarea
-                    value={parecer.text}
-                    onChange={(e) => updateParecerText(parecer.id, e.target.value)}
-                    placeholder="Escreva seu parecer..."
-                    rows={3}
-                    className="w-full"
-                  />
+                   <Textarea
+                     value={parecer.text}
+                     onChange={(e) => updateParecerText(parecer.id, e.target.value)}
+                     placeholder="Escreva seu parecer..."
+                     rows={3}
+                     className="w-full mb-2"
+                   />
+                   {parecer.text.trim() && (
+                     <div className="flex justify-end">
+                       <Button
+                         type="button"
+                         size="sm"
+                         onClick={() => confirmParecer(parecer.id)}
+                         className="bg-green-600 hover:bg-green-700 text-white"
+                       >
+                         <CheckIcon className="h-4 w-4 mr-1" />
+                         Confirmar
+                       </Button>
+                     </div>
+                   )}
                 </div>
               ))}
               
