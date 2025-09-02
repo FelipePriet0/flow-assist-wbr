@@ -10,6 +10,7 @@ import { BasicInfoData } from './BasicInfoModal';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDraftPersistence } from '@/hooks/useDraftPersistence';
+import { supabase } from '@/integrations/supabase/client';
 import { Loader2, SaveIcon, CheckIcon, X } from 'lucide-react';
 import {
   AlertDialog,
@@ -57,6 +58,8 @@ export function ExpandedFichaModal({
   const [pendingAction, setPendingAction] = useState<'close' | 'save' | null>(null);
   const [initialFormData, setInitialFormData] = useState<ComercialFormValues | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [loadedDraftData, setLoadedDraftData] = useState<any>(null);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
 
   // Auto-save status component
   const SaveStatus = () => {
@@ -253,6 +256,41 @@ export function ExpandedFichaModal({
     setParecerToDelete(null);
   };
 
+  // Load existing draft data when modal opens
+  useEffect(() => {
+    const loadExistingDraft = async () => {
+      if (open && applicationId) {
+        setIsLoadingDraft(true);
+        try {
+          const { data: draft, error } = await supabase
+            .from('applications_drafts')
+            .select('*')
+            .eq('application_id', applicationId)
+            .maybeSingle();
+
+          if (!error && draft) {
+            console.log('Loaded existing draft data:', draft);
+            setLoadedDraftData(draft);
+          } else {
+            console.log('No existing draft found for applicationId:', applicationId);
+            setLoadedDraftData(null);
+          }
+        } catch (error) {
+          console.error('Error loading draft data:', error);
+          setLoadedDraftData(null);
+        } finally {
+          setIsLoadingDraft(false);
+        }
+      } else if (open) {
+        // Reset state for new applications
+        setLoadedDraftData(null);
+        setIsLoadingDraft(false);
+      }
+    };
+
+    loadExistingDraft();
+  }, [open, applicationId]);
+
   // Reset state when modal opens/closes
   useEffect(() => {
     if (open) {
@@ -270,7 +308,114 @@ export function ExpandedFichaModal({
     };
   }, [autoSaveTimer]);
 
-  const transformedFormData: Partial<ComercialFormValues> = {
+  // Map loaded draft data to form format
+  const mapDraftToFormData = (draft: any): Partial<ComercialFormValues> => {
+    return {
+      cliente: {
+        nome: basicInfo.nome,
+        cpf: basicInfo.cpf,
+        nasc: basicInfo.nascimento ? basicInfo.nascimento.toISOString().split('T')[0] : '',
+        tel: basicInfo.telefone,
+        whats: basicInfo.whatsapp || '',
+        naturalidade: basicInfo.naturalidade,
+        uf: basicInfo.uf,
+        email: basicInfo.email || '',
+        doPs: draft?.customer_data?.doPs || '',
+      },
+      endereco: {
+        end: draft?.address_data?.end || '',
+        n: draft?.address_data?.n || '',
+        compl: draft?.address_data?.compl || '',
+        cep: draft?.address_data?.cep || '',
+        bairro: draft?.address_data?.bairro || '',
+        cond: draft?.address_data?.cond || '',
+        tempo: draft?.address_data?.tempo || '',
+        tipoMoradia: draft?.address_data?.tipoMoradia || undefined,
+        tipoMoradiaObs: draft?.address_data?.tipoMoradiaObs || '',
+        doPs: draft?.address_data?.doPs || '',
+      },
+      relacoes: {
+        unicaNoLote: draft?.household_data?.unicaNoLote || undefined,
+        unicaNoLoteObs: draft?.household_data?.unicaNoLoteObs || '',
+        comQuemReside: draft?.household_data?.comQuemReside || '',
+        nasOutras: draft?.household_data?.nasOutras || undefined,
+        temContrato: draft?.household_data?.temContrato || 'Não',
+        enviouContrato: draft?.household_data?.enviouContrato || undefined,
+        nomeDe: draft?.household_data?.nomeDe || '',
+        nomeLocador: draft?.household_data?.nomeLocador || '',
+        telefoneLocador: draft?.household_data?.telefoneLocador || '',
+        enviouComprovante: draft?.household_data?.enviouComprovante || undefined,
+        tipoComprovante: draft?.household_data?.tipoComprovante || undefined,
+        nomeComprovante: draft?.household_data?.nomeComprovante || '',
+        temInternetFixa: draft?.household_data?.temInternetFixa || undefined,
+        empresaInternet: draft?.household_data?.empresaInternet || '',
+        observacoes: draft?.household_data?.observacoes || '',
+      },
+      empregoRenda: {
+        profissao: draft?.employment_data?.profissao || '',
+        empresa: draft?.employment_data?.empresa || '',
+        vinculo: draft?.employment_data?.vinculo || undefined,
+        vinculoObs: draft?.employment_data?.vinculoObs || '',
+        doPs: draft?.employment_data?.doPs || '',
+      },
+      conjuge: {
+        estadoCivil: draft?.spouse_data?.estadoCivil || undefined,
+        obs: draft?.spouse_data?.obs || '',
+        nome: draft?.spouse_data?.nome || '',
+        telefone: draft?.spouse_data?.telefone || '',
+        whatsapp: draft?.spouse_data?.whatsapp || '',
+        cpf: draft?.spouse_data?.cpf || '',
+        naturalidade: draft?.spouse_data?.naturalidade || '',
+        uf: draft?.spouse_data?.uf || '',
+        obs2: draft?.spouse_data?.obs2 || '',
+        doPs: draft?.spouse_data?.doPs || '',
+      },
+      spc: draft?.other_data?.spc || '',
+      pesquisador: draft?.other_data?.pesquisador || '',
+      filiacao: {
+        pai: { 
+          nome: draft?.other_data?.filiacao?.pai?.nome || '', 
+          reside: draft?.other_data?.filiacao?.pai?.reside || '', 
+          telefone: draft?.other_data?.filiacao?.pai?.telefone || '' 
+        },
+        mae: { 
+          nome: draft?.other_data?.filiacao?.mae?.nome || '', 
+          reside: draft?.other_data?.filiacao?.mae?.reside || '', 
+          telefone: draft?.other_data?.filiacao?.mae?.telefone || '' 
+        },
+      },
+      referencias: {
+        ref1: { 
+          nome: draft?.references_data?.ref1?.nome || '', 
+          telefone: draft?.references_data?.ref1?.telefone || '', 
+          reside: draft?.references_data?.ref1?.reside || '', 
+          parentesco: draft?.references_data?.ref1?.parentesco || '' 
+        },
+        ref2: { 
+          nome: draft?.references_data?.ref2?.nome || '', 
+          telefone: draft?.references_data?.ref2?.telefone || '', 
+          reside: draft?.references_data?.ref2?.reside || '', 
+          parentesco: draft?.references_data?.ref2?.parentesco || '' 
+        },
+      },
+      outras: {
+        planoEscolhido: draft?.other_data?.outras?.planoEscolhido || '',
+        diaVencimento: draft?.other_data?.outras?.diaVencimento || undefined,
+        carneImpresso: draft?.other_data?.outras?.carneImpresso || undefined,
+        svaAvulso: draft?.other_data?.outras?.svaAvulso || '',
+      },
+      infoRelevantes: {
+        info: draft?.other_data?.infoRelevantes?.info || '',
+        infoMk: draft?.other_data?.infoRelevantes?.infoMk || '',
+        parecerAnalise: draft?.other_data?.infoRelevantes?.parecerAnalise || '',
+      },
+    };
+  };
+
+  // Generate transformed form data based on loaded draft or defaults
+  const transformedFormData: Partial<ComercialFormValues> = loadedDraftData 
+    ? mapDraftToFormData(loadedDraftData) 
+    : {
     cliente: {
       nome: basicInfo.nome,
       cpf: basicInfo.cpf,
@@ -381,13 +526,20 @@ export function ExpandedFichaModal({
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden">
-            <NovaFichaComercialForm
-              onSubmit={handleSubmitWrapper}
-              initialValues={transformedFormData}
-              onFormChange={handleFormChange}
-              applicationId={applicationId}
-              onDeleteParecer={handleDeleteParecer}
-            />
+            {isLoadingDraft ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Carregando dados da ficha...</span>
+              </div>
+            ) : (
+              <NovaFichaComercialForm
+                onSubmit={handleSubmitWrapper}
+                initialValues={transformedFormData}
+                onFormChange={handleFormChange}
+                applicationId={applicationId}
+                onDeleteParecer={handleDeleteParecer}
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>
