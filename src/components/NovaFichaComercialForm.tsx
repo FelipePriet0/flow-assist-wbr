@@ -284,11 +284,13 @@ export default function NovaFichaComercialForm({ onSubmit, onCancel, initialValu
   }, [nasc]);
 
   async function submit(values: ComercialFormValues) {
-    // Ensure analysis fields remain blank
+    // Preserve existing pareceres during submit
+    const currentParecerAnalise = values.infoRelevantes?.parecerAnalise || JSON.stringify(pareceres);
+    
     values.infoRelevantes = {
       info: values.infoRelevantes?.info || "",
       infoMk: values.infoRelevantes?.infoMk || "",
-      parecerAnalise: "",
+      parecerAnalise: currentParecerAnalise, // Preserve pareceres instead of clearing
     };
     await onSubmit(values);
   }
