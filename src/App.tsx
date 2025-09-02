@@ -9,6 +9,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import RequireAuth from "@/routes/RequireAuth";
 import Index from "./pages/Index";
 import Agenda from "./pages/Agenda";
+import Agendamento from "./pages/Agendamento";
 import Historico from "./pages/Historico";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -29,6 +30,7 @@ const App = () => (
               <Route element={<ProtectedLayout />}>
                 <Route path="/" element={<Index />} />
                 <Route path="/agenda" element={<Agenda />} />
+                <Route path="/agendamento" element={<Agendamento />} />
                 <Route path="/historico" element={<Historico />} />
                 <Route path="/dashboard/all" element={<Index />} />
                 <Route path="/dashboard/:company" element={<Index />} />
