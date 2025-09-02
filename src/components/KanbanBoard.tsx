@@ -485,10 +485,10 @@ useEffect(() => {
       if (!card) return;
 
       // Map frontend ColumnId to backend status values with proper typing
-      const statusMap: Record<ColumnId, "aprovado" | "pendente" | "reanalisar" | "negado"> = {
-        "recebido": "pendente",
-        "em_analise": "pendente", 
-        "reanalise": "reanalisar",
+      const statusMap: Record<ColumnId, "aprovado" | "em_analise" | "reanalise" | "negado"> = {
+        "recebido": "em_analise",
+        "em_analise": "em_analise", 
+        "reanalise": "reanalise",
         "aprovado": "aprovado",
         "negado_taxa": "negado",
         "finalizado": "aprovado"
@@ -498,11 +498,11 @@ useEffect(() => {
 
       // Call the Supabase RPC to change status (if available)
       if (supabase.rpc && backendStatus) {
-        const { error } = await supabase.rpc('applications_change_status', {
-          p_app_id: cardId,
-          p_new_status: backendStatus,
-          p_comment: label || `Movido para ${target}`
-        });
+      const { error } = await supabase.rpc('applications_change_status', {
+        p_app_id: cardId,
+        p_new_status: backendStatus as "aprovado" | "reanalisar" | "negado" | "pendente",
+        p_comment: label || `Movido para ${target}`
+      });
 
         if (error) {
           console.error("Error changing status:", error);
@@ -609,11 +609,11 @@ useEffect(() => {
 
   const handleIngressar = async (card: CardItem) => {
     try {
-      console.log('Ingressando na ficha:', card.id, 'setting status to: pendente');
+      console.log('Ingressando na ficha:', card.id, 'setting status to: em_analise');
       const { error } = await supabase
         .from('applications')
         .update({
-          status: 'pendente', // Use enum value instead of column name
+          status: 'em_analise', // Use correct enum value
           analyst_id: profile?.id,
           analyst_name: profile?.full_name
         })
@@ -621,8 +621,8 @@ useEffect(() => {
 
       if (error) throw error;
       
-      // Reload the page to refresh data
-      window.location.reload();
+      // Reload applications data instead of page
+      await loadApplications();
       
       toast({
         title: "Sucesso",
@@ -1164,7 +1164,7 @@ useEffect(() => {
             setShowExpandedForm(false);
             toast({ title: "Ficha criada com sucesso!" });
             // Reload data
-            window.location.reload();
+            await loadApplications();
           }}
           basicInfo={basicInfoData}
           applicationId={pendingApplicationId || undefined}
@@ -1208,7 +1208,7 @@ useEffect(() => {
           setCardToDelete(null);
         }}
         customerName={cardToDelete?.nome || ''}
-        customerCpf={cardToDelete?.telefone || ''}
+        customerCpf={cardToDelete?.cpf || ''}
       />
 
       <RecoveryToast
