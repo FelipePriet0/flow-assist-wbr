@@ -426,46 +426,9 @@ useEffect(() => {
   load();
   loadReanalysts();
   
-  // Check for resume session after a delay to ensure components are mounted
+  // Check for resume session but don't auto-open
   if (profile?.id && !resumeSessionChecked) {
-    setTimeout(async () => {
-      const sessionData = await checkForExistingSession();
-      if (sessionData) {
-        // Load the application data to get basic info
-        const { data: applicationData } = await supabase
-          .from('applications')
-          .select(`
-            *,
-            customers(*)
-          `)
-          .eq('id', sessionData.applicationId)
-          .single();
-
-        if (applicationData?.customers) {
-          const customer = applicationData.customers;
-          const resumeBasicInfo: BasicInfoData = {
-            nome: customer.full_name,
-            cpf: customer.cpf,
-            telefone: customer.phone || '',
-            whatsapp: customer.whatsapp || '',
-            naturalidade: customer.birthplace || '',
-            uf: customer.birthplace_uf || '',
-            nascimento: customer.birth_date ? new Date(customer.birth_date) : new Date(),
-            email: customer.email || '',
-          };
-
-          setBasicInfoData(resumeBasicInfo);
-          setPendingApplicationId(sessionData.applicationId);
-          setShowExpandedForm(true);
-          
-          toast({
-            title: "Retomando edição",
-            description: "Continuando onde você parou...",
-          });
-        }
-      }
-      setResumeSessionChecked(true);
-    }, 1000);
+    setResumeSessionChecked(true);
   }
   
   return () => {
@@ -1166,7 +1129,12 @@ useEffect(() => {
           onSubmit={async (data) => {
             // Complete application creation logic here
             setShowExpandedForm(false);
-            toast({ title: "Ficha criada com sucesso!" });
+            // Only show creation toast for new applications
+            if (!pendingApplicationId) {
+              toast({ title: "Ficha criada com sucesso!" });
+            } else {
+              toast({ title: "Ficha atualizada com sucesso!" });
+            }
             // Reload data
             await loadApplications();
           }}
