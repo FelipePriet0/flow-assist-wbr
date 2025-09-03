@@ -21,12 +21,14 @@ const Auth = () => {
     "premium.demo@example.com",
     "reanalista.demo@example.com",
     "comercial.mznet.demo@example.com",
+    "gestor.analise.demo@example.com",
   ] as const;
 
   const [demoStatus, setDemoStatus] = useState<Record<string, string>>({
     "premium.demo@example.com": "",
     "reanalista.demo@example.com": "",
     "comercial.mznet.demo@example.com": "",
+    "gestor.analise.demo@example.com": "",
   });
 
   useEffect(() => {
@@ -182,10 +184,51 @@ const Auth = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
-              <div>
-                <Label htmlFor="full_name">Nome completo</Label>
-                <Input id="full_name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-              </div>
+              <>
+                <div>
+                  <Label htmlFor="full_name">Nome completo</Label>
+                  <Input id="full_name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                </div>
+                <div className="mt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={async () => {
+                      const email = "gestor.analise.demo@example.com";
+                      setLoading(true);
+                      try {
+                        const redirectUrl = `${window.location.origin}/`;
+                        const { error } = await supabase.auth.signUp({
+                          email,
+                          password: DEMO_PASSWORD,
+                          options: {
+                            emailRedirectTo: redirectUrl,
+                            data: { full_name: "Gestor de Análise Demo" },
+                          },
+                        });
+                        if (error) {
+                          const msg = String(error.message || "").toLowerCase();
+                          if (msg.includes("already") || msg.includes("registered")) {
+                            toast({ title: "Conta demo já existe", description: "Use o login rápido abaixo." });
+                          } else {
+                            throw error;
+                          }
+                        } else {
+                          toast({ title: "Conta demo criada", description: "Conta de Gestor de Análise criada com sucesso." });
+                        }
+                      } catch (err: any) {
+                        toast({ title: "Erro", description: err?.message || "Não foi possível criar conta demo." });
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    {loading ? "Criando..." : "Criar Conta Demo - Gestor de Análise"}
+                  </Button>
+                </div>
+              </>
             )}
             <div>
               <Label htmlFor="email">E-mail</Label>
@@ -223,9 +266,10 @@ const Auth = () => {
               <li>premium.demo@example.com — {demoStatus["premium.demo@example.com"] || "-"}</li>
               <li>reanalista.demo@example.com — {demoStatus["reanalista.demo@example.com"] || "-"}</li>
               <li>comercial.mznet.demo@example.com — {demoStatus["comercial.mznet.demo@example.com"] || "-"}</li>
+              <li>gestor.analise.demo@example.com — {demoStatus["gestor.analise.demo@example.com"] || "-"}</li>
             </ul>
 
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <Button onClick={() => handleQuickLogin("premium.demo@example.com")} disabled={loading}>
                 Entrar como Premium
               </Button>
@@ -234,6 +278,9 @@ const Auth = () => {
               </Button>
               <Button onClick={() => handleQuickLogin("comercial.mznet.demo@example.com")} disabled={loading}>
                 Entrar como Comercial (MZNET)
+              </Button>
+              <Button onClick={() => handleQuickLogin("gestor.analise.demo@example.com")} disabled={loading}>
+                Entrar como Gestor de Análise
               </Button>
             </div>
           </section>
