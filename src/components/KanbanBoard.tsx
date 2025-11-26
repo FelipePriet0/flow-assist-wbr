@@ -58,8 +58,6 @@ import { OptimizedKanbanCard } from "@/components/ficha/OptimizedKanbanCard";
 import { ParecerConfirmModal } from "@/components/ficha/ParecerConfirmModal";
 
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { useAuth } from "@/context/AuthContext";
-import { canChangeStatus, isPremium } from "@/lib/access";
 import { useDraftPersistence } from "@/hooks/useDraftPersistence";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -196,9 +194,8 @@ export default function KanbanBoard() {
   const [resumeSessionChecked, setResumeSessionChecked] = useState(false);
 
   const { name: currentUserName } = useCurrentUser();
-  const { profile } = useAuth();
   const { checkForExistingSession } = useDraftPersistence();
-  const allowMove = canChangeStatus(profile);
+  const allowMove = true;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -244,14 +241,12 @@ export default function KanbanBoard() {
       const matchesPrazo =
         prazoFiltro === "todos" || (prazoFiltro === "hoje" ? isHoje : isAtrasado);
 
-      // View filter for reanalysts
-      const matchesView = viewFilter === "all" || 
-                         (viewFilter === "mine" && c.assignedReanalyst === profile?.id) ||
-                         (viewFilter === "company" && c.companyId === profile?.company_id);
+      // View filter removed (no auth)
+      const matchesView = true;
 
       return matchesQuery && matchesResp && matchesPrazo && matchesView;
     });
-  }, [cards, query, responsavelFiltro, prazoFiltro, viewFilter, profile]);
+  }, [cards, query, responsavelFiltro, prazoFiltro, viewFilter]);
 
 // Load applications from Supabase (with company and customer for logos and names)
 const loadApplications = async () => {
@@ -369,72 +364,13 @@ useEffect(() => {
     }
   };
 
-  // Check for resume session after profile is loaded
-  const checkResumeSession = async () => {
-    if (!profile?.id || resumeSessionChecked) return;
-    
-    try {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('current_edit_application_id')
-        .eq('id', profile.id)
-        .single();
-
-      if (profileData?.current_edit_application_id) {
-        // Load the application data to get basic info
-        const { data: applicationData } = await supabase
-          .from('applications')
-          .select(`
-            *,
-            customers(*),
-            applications_drafts!inner(*)
-          `)
-          .eq('id', profileData.current_edit_application_id)
-          .eq('applications_drafts.user_id', profile.id)
-          .maybeSingle();
-
-        if (applicationData?.customers) {
-          const customer = applicationData.customers;
-          const resumeBasicInfo: BasicInfoData = {
-            nome: customer.full_name,
-            cpf: customer.cpf,
-            telefone: customer.phone || '',
-            whatsapp: customer.whatsapp || '',
-            naturalidade: customer.birthplace || '',
-            uf: customer.birthplace_uf || '',
-            nascimento: customer.birth_date ? new Date(customer.birth_date) : new Date(),
-            email: customer.email || '',
-          };
-
-          setBasicInfoData(resumeBasicInfo);
-          setPendingApplicationId(profileData.current_edit_application_id);
-          setShowExpandedForm(true);
-          
-          toast({
-            title: "Retomando edição",
-            description: "Continuando onde você parou...",
-          });
-        }
-      }
-      setResumeSessionChecked(true);
-    } catch (error) {
-      console.error('Error checking resume session:', error);
-      setResumeSessionChecked(true);
-    }
-  };
-
   load();
   loadReanalysts();
-  
-  // Check for resume session but don't auto-open
-  if (profile?.id && !resumeSessionChecked) {
-    setResumeSessionChecked(true);
-  }
   
   return () => {
     mounted = false;
   };
-}, [profile?.id, resumeSessionChecked]);
+}, []);
 
   // Auto-alert re-render timer
   useEffect(() => {
@@ -581,8 +517,8 @@ useEffect(() => {
         .from('applications')
         .update({
           status: 'em_analise', // Use correct enum value
-          analyst_id: profile?.id,
-          analyst_name: profile?.full_name
+          analyst_id: null,
+          analyst_name: null
         })
         .eq('id', card.id);
 
@@ -816,20 +752,6 @@ useEffect(() => {
                 </SelectContent>
               </Select>
             </div>
-            {profile?.role === "reanalista" && (
-              <div className="flex items-center gap-2">
-                <Label className="min-w-24">Visualização</Label>
-                <Select value={viewFilter} onValueChange={(v: ViewFilter) => setViewFilter(v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Visualização" />
-                  </SelectTrigger>
-                  <SelectContent className="z-50">
-                    <SelectItem value="all">Todas (empresa)</SelectItem>
-                    <SelectItem value="mine">Minhas tarefas</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
 
           <div className="mt-4 flex items-center justify-between">
@@ -888,8 +810,8 @@ useEffect(() => {
                         .from('applications')
                         .insert({
                           customer_id: customer.id,
-                          company_id: profile?.company_id || null,
-                          created_by: profile?.id || null,
+                          company_id: null,
+                          created_by: null,
                           status: 'recebido',
                           due_at: deadline.toISOString().split('T')[0],
                           received_at: now.toISOString().split('T')[0],
@@ -1229,9 +1151,8 @@ function KanbanCard({
   onDesingressar: (id: string) => void;
   reanalysts: Array<{id: string; full_name: string; avatar_url?: string; company_id?: string}>;
 }) {
-  const { profile } = useAuth();
-  const allowDecide = canChangeStatus(profile);
-  const premium = isPremium(profile);
+  const allowDecide = true;
+  const premium = true;
   const overDue = isOverdue(card);
   const fireColumns = new Set<ColumnId>(["recebido", "em_analise", "reanalise", "aprovado"]);
   const msUntil = new Date(card.deadline).getTime() - Date.now();
