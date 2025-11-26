@@ -25,8 +25,6 @@ import {
   X,
   RotateCcw
 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { canIngressar, canChangeStatus } from "@/lib/access";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { CardItem } from "@/components/KanbanBoard";
@@ -54,7 +52,6 @@ export function OptimizedKanbanCard({
   onNegar,
   onReanalisar,
 }: OptimizedKanbanCardProps) {
-  const { profile } = useAuth();
   const { toast } = useToast();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -126,9 +123,9 @@ export function OptimizedKanbanCard({
     actionFn(card, card.parecer || '');
   };
 
-  const showIngressarButton = card.columnId === "recebido" && canIngressar(profile);
-  const showDecisionButtons = card.columnId === "em_analise" && canChangeStatus(profile);
-  const showReanalysisButtons = card.columnId === "reanalise" && canChangeStatus(profile);
+  const showIngressarButton = card.columnId === "recebido";
+  const showDecisionButtons = card.columnId === "em_analise";
+  const showReanalysisButtons = card.columnId === "reanalise";
 
   return (
     <Card

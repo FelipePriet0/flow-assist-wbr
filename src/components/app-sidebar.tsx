@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { History, KanbanSquare, User, Route } from "lucide-react";
+import { History, KanbanSquare, Route } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,7 +21,6 @@ export function AppSidebar() {
     { title: "Kanban", url: "/", icon: KanbanSquare },
     { title: "Agendamento", url: "/agendamento", icon: Route },
     { title: "Histórico", url: "/historico", icon: History },
-    { title: "Perfil", url: "/perfil", icon: User },
   ];
 
   return (

@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { isPremium } from "@/lib/access";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +29,6 @@ interface HistoryItem {
 }
 
 const Historico = () => {
-  const { profile: currentUser } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,9 +137,7 @@ const Historico = () => {
                 Visualize fichas finalizadas, pareceres e análise de inadimplência
               </p>
             </div>
-            {isPremium(currentUser) && (
-              <HistoryFileUpload onUploadSuccess={fetchHistory} />
-            )}
+            <HistoryFileUpload onUploadSuccess={fetchHistory} />
           </div>
         </div>
       </header>
